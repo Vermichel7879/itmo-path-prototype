@@ -1,0 +1,774 @@
+{
+  "schema_version": "1.0",
+  "journey_id": "computer_technologies_2026",
+  "program": {
+    "program_name": "Компьютерные технологии",
+    "admission_year": 2026,
+    "database_schema_version": "1.0"
+  },
+  "experience": {
+    "target_duration_seconds": 300,
+    "minimum_duration_seconds": 270,
+    "maximum_duration_seconds": 330,
+    "minimum_choices": 4,
+    "maximum_choices": 7,
+    "maximum_options_per_step": 4,
+    "maximum_conditional_steps_per_route": 2
+  },
+  "start_step_id": "program_intro",
+  "career_center_contacts": [
+    {
+      "contact_id": "career_center_website",
+      "title": "Сайт Центра карьеры ИТМО",
+      "type": "website",
+      "value": "careers.itmo.ru",
+      "url": "https://careers.itmo.ru/",
+      "source_url": "https://careers.itmo.ru/",
+      "verified_on": "2026-08-12"
+    },
+    {
+      "contact_id": "career_center_email",
+      "title": "Почта Центра карьеры",
+      "type": "email",
+      "value": "careers@itmo.ru",
+      "url": "mailto:careers@itmo.ru",
+      "source_url": "https://careers.itmo.ru/",
+      "verified_on": "2026-08-12"
+    },
+    {
+      "contact_id": "career_center_telegram",
+      "title": "Telegram Центра карьеры",
+      "type": "telegram",
+      "value": "@careercentreitmo",
+      "url": "https://t.me/careercentreitmo",
+      "source_url": "https://t.me/careercentreitmo",
+      "verified_on": "2026-08-12"
+    }
+  ],
+  "steps": [
+    {
+      "step_id": "program_intro",
+      "type": "program_intro",
+      "title": "Посмотрим, какие возможности программы тебе ближе",
+      "body": "Ты уже выбрал программу. Теперь свяжем профессии, реальные дисциплины, навыки и возможности ЦКО в один понятный маршрут.",
+      "estimated_seconds": 18,
+      "next_step_id": "career_context"
+    },
+    {
+      "step_id": "career_context",
+      "type": "career_choice",
+      "title": "В каких задачах тебе интереснее увидеть знания программы?",
+      "intro": "Это не выбор профессии навсегда. Он поможет показывать примеры в близком тебе контексте.",
+      "details_config": {
+        "show_profession_title": true,
+        "show_daily_tasks": true,
+        "show_entry_level_tasks": true,
+        "show_related_disciplines": true
+      },
+      "career_details": [
+        {
+          "career_ref": "software_engineer",
+          "daily_tasks": [
+            "разбирается в требованиях и существующем коде",
+            "проектирует и пишет программные компоненты",
+            "тестирует изменения, исправляет ошибки и обсуждает решения с командой"
+          ],
+          "creates": [
+            "приложения и серверные сервисы",
+            "программные компоненты и интерфейсы между системами"
+          ],
+          "beginner_tasks": [
+            "исправить локальную ошибку в существующем коде",
+            "добавить небольшую функцию по готовым требованиям",
+            "написать тест или запрос к базе данных"
+          ],
+          "related_discipline_refs": [
+            "DISC_58510_R214",
+            "DISC_58524_R215",
+            "DISC_58543_R218",
+            "DISC_58534_R217"
+          ]
+        },
+        {
+          "career_ref": "ml_engineer",
+          "daily_tasks": [
+            "подготавливает данные и проверяет их качество",
+            "обучает модели и сравнивает результаты по метрикам",
+            "встраивает модель в сервис и следит за её работой"
+          ],
+          "creates": [
+            "модели машинного обучения",
+            "пайплайны обработки данных и ML-сервисы"
+          ],
+          "beginner_tasks": [
+            "очистить и исследовать набор данных",
+            "запустить обучение по готовой схеме и сравнить метрики",
+            "подготовить воспроизводимый эксперимент"
+          ],
+          "related_discipline_refs": [
+            "DISC_58546_R60",
+            "DISC_58471_R62",
+            "DISC_58472_R64",
+            "DISC_58608_R70"
+          ]
+        },
+        {
+          "career_ref": "research_engineer",
+          "daily_tasks": [
+            "изучает существующие методы и формулирует гипотезу",
+            "создаёт прототип и ставит вычислительный эксперимент",
+            "анализирует результаты и объясняет ограничения подхода"
+          ],
+          "creates": [
+            "экспериментальные прототипы",
+            "сравнения методов, отчёты и воспроизводимые результаты"
+          ],
+          "beginner_tasks": [
+            "реализовать часть метода по статье или техническому описанию",
+            "повторить эксперимент и проверить результат",
+            "собрать таблицу сравнения и описать выводы"
+          ],
+          "related_discipline_refs": [
+            "DISC_58496_R229",
+            "DISC_58579_R33",
+            "DISC_58411_R47",
+            "DISC_58471_R62"
+          ]
+        },
+        {
+          "career_ref": "algorithm_engineer",
+          "daily_tasks": [
+            "переводит прикладную задачу в математическую или алгоритмическую модель",
+            "проектирует алгоритм и оценивает его сложность",
+            "профилирует реализацию и ищет способы ускорения"
+          ],
+          "creates": [
+            "алгоритмы и вычислительные модули",
+            "оптимизированные реализации для работы с большими данными или сложными ограничениями"
+          ],
+          "beginner_tasks": [
+            "реализовать известный алгоритм и покрыть его тестами",
+            "сравнить несколько решений по времени и памяти",
+            "найти узкое место и предложить локальную оптимизацию"
+          ],
+          "related_discipline_refs": [
+            "DISC_58510_R214",
+            "DISC_58578_R144",
+            "DISC_58599_R29",
+            "DISC_58534_R217"
+          ]
+        }
+      ],
+      "career_refs": [
+        "software_engineer",
+        "ml_engineer",
+        "research_engineer",
+        "algorithm_engineer"
+      ],
+      "estimated_seconds": 48,
+      "save_as": "selected_career_context",
+      "next_step_id": "semester_1_summary"
+    },
+    {
+      "step_id": "semester_1_summary",
+      "type": "semester_summary",
+      "semester": 1,
+      "title": "1 семестр. Учишь компьютер выполнять понятные команды",
+      "what_appears": "Программирование, устройство компьютера, алгоритмы, дискретная математика и математический анализ.",
+      "what_student_does": "Пишет первые программы, разбирает задачу на последовательность действий и смотрит, как код выполняется на компьютере.",
+      "what_student_learns": "Переводить условие задачи в алгоритм и проверять, что программа выдаёт ожидаемый результат.",
+      "where_it_is_used": "Это основа разработки, анализа данных, машинного обучения и любых более сложных ИТ-систем.",
+      "discipline_refs": [
+        "DISC_58499_R213",
+        "DISC_58500_R212",
+        "DISC_58478_R182",
+        "DISC_58477_R183"
+      ],
+      "estimated_seconds": 12,
+      "next_step_id": "semester_2_summary"
+    },
+    {
+      "step_id": "profile_choice",
+      "type": "interest_choice",
+      "semester": 3,
+      "choice_category": "profile_direction",
+      "source_elective_group_ref": "GRP_10",
+      "title": "Перед третьим семестром: какую сторону программы хочется изучать глубже?",
+      "intro": "В учебном плане это реальный выбор одного из двух профилей. Сайт подсветит вариант, связанный с выбранной профессией, но решение остаётся за тобой.",
+      "options": [
+        {
+          "option_id": "ai_and_programming_profile",
+          "title": "Учить системы работать с данными и находить закономерности",
+          "description": "Больше внимания Python, анализу данных, машинному и глубокому обучению, компьютерному зрению и другим технологиям ИИ.",
+          "source_child_group_refs": [
+            "GRP_11"
+          ],
+          "discipline_refs": [
+            "DISC_58546_R60",
+            "DISC_58471_R62",
+            "DISC_58472_R64",
+            "DISC_58605_R66"
+          ],
+          "skill_refs": [
+            "programming",
+            "data",
+            "machine_learning",
+            "ml_engineering"
+          ],
+          "learning_benefit": "Ты научишься готовить данные, строить и проверять модели, а затем превращать эксперимент в работающую ML-систему.",
+          "career_context": "Такой набор задач встречается в ML-разработке, анализе данных и прикладных исследованиях.",
+          "recommended_for_career_refs": [
+            "ml_engineer",
+            "research_engineer"
+          ],
+          "recommendation_reason": "Профиль включает анализ данных, машинное обучение и проектирование ML-систем — это напрямую связано с выбранной карьерной целью.",
+          "result_tags": [
+            "ai_systems",
+            "data_experiments"
+          ]
+        },
+        {
+          "option_id": "algorithms_and_programming_profile",
+          "title": "Разбираться, как устроены программы и делать их надёжнее",
+          "description": "Больше внимания архитектуре компьютера, операционным системам, алгоритмам, сетям и разным подходам к программированию.",
+          "source_child_group_refs": [
+            "GRP_74"
+          ],
+          "discipline_refs": [
+            "DISC_58478_R182",
+            "DISC_58481_R186",
+            "DISC_58476_R187",
+            "DISC_58480_R191"
+          ],
+          "skill_refs": [
+            "programming",
+            "algorithms",
+            "systems",
+            "software_engineering"
+          ],
+          "learning_benefit": "Ты научишься выбирать алгоритмы, понимать ограничения компьютера и проектировать программные решения из нескольких частей.",
+          "career_context": "Такой набор задач встречается в разработке программного обеспечения, системном программировании и инженерии алгоритмов.",
+          "recommended_for_career_refs": [
+            "software_engineer",
+            "algorithm_engineer"
+          ],
+          "recommendation_reason": "Профиль углубляет алгоритмы, устройство компьютера, операционные системы и программную инженерию — это напрямую связано с выбранной карьерной целью.",
+          "result_tags": [
+            "software_systems",
+            "efficient_algorithms"
+          ]
+        }
+      ],
+      "estimated_seconds": 28,
+      "save_as": "selected_profile_interest",
+      "next_step_id": "semester_3_ai_choice"
+    },
+    {
+      "step_id": "semester_2_summary",
+      "type": "semester_summary",
+      "semester": 2,
+      "title": "2 семестр. От первых программ — к структурам данных",
+      "what_appears": "C++, продолжение алгоритмов, дискретной математики и математического анализа.",
+      "what_student_does": "Реализует структуры данных, сравнивает способы решения одной задачи и ищет ошибки в коде.",
+      "what_student_learns": "Выбирать способ хранения данных и понимать, как выбор алгоритма влияет на скорость программы.",
+      "where_it_is_used": "Эти навыки нужны, когда данных становится много, а программа должна работать быстро и предсказуемо.",
+      "discipline_refs": [
+        "DISC_58510_R214",
+        "DISC_58524_R215",
+        "DISC_58511_R216"
+      ],
+      "estimated_seconds": 12,
+      "next_step_id": "profile_choice"
+    },
+    {
+      "step_id": "semester_3_ai_choice",
+      "type": "interest_choice",
+      "semester": 3,
+      "choice_category": "professional_elective",
+      "source_elective_group_ref": "GRP_42",
+      "title": "3 семестр. Какую дополнительную сторону разработки хочется попробовать?",
+      "intro": "В профиле ИИ это реальный выбор одной дисциплины из блока третьего семестра.",
+      "options": [
+        {
+          "option_id": "ai_web_product",
+          "title": "Собрать веб-приложение для модели или данных",
+          "description": "Разобраться с веб-страницами, клиент-серверным взаимодействием и передачей данных по сети.",
+          "discipline_refs": [
+            "DISC_58485_R48"
+          ],
+          "skill_refs": [
+            "web_development",
+            "backend",
+            "programming"
+          ],
+          "learning_benefit": "Ты сможешь не только обучить модель, но и представить результат в форме, с которой взаимодействует пользователь.",
+          "career_context": "Полезно для прототипов ML-сервисов и приложений, работающих с данными.",
+          "recommended_for_career_refs": ["ml_engineer", "software_engineer"],
+          "recommendation_reason": "Помогает превратить модель или обработку данных в сервис, которым может пользоваться человек.",
+          "result_tags": [
+            "web_prototype"
+          ]
+        },
+        {
+          "option_id": "ai_backend_language",
+          "title": "Попробовать язык для серверных программ",
+          "description": "Познакомиться с Go и задачами, где важны простота, скорость и параллельная обработка запросов.",
+          "discipline_refs": [
+            "DISC_58592_R46"
+          ],
+          "skill_refs": [
+            "programming",
+            "backend",
+            "systems"
+          ],
+          "learning_benefit": "Ты расширишь набор инструментов для создания сервисов вокруг моделей и данных.",
+          "career_context": "Полезно для серверной части ML-продуктов и инфраструктурных сервисов.",
+          "recommended_for_career_refs": ["software_engineer", "ml_engineer"],
+          "recommendation_reason": "Серверное программирование нужно и разработчику ПО, и ML-инженеру для создания сервисов вокруг моделей.",
+          "result_tags": [
+            "backend_services"
+          ]
+        },
+        {
+          "option_id": "ai_formal_reasoning",
+          "title": "Разобраться, как компьютер работает с логическими высказываниями",
+          "description": "Изучить формальные правила рассуждения и способы записывать логические конструкции.",
+          "discipline_refs": [
+            "DISC_58411_R47"
+          ],
+          "skill_refs": [
+            "theoretical_cs",
+            "mathematics",
+            "algorithms"
+          ],
+          "learning_benefit": "Ты укрепишь фундамент для понимания формальных моделей, алгоритмов и методов искусственного интеллекта.",
+          "career_context": "Полезно в исследовательских и алгоритмических задачах.",
+          "recommended_for_career_refs": ["research_engineer", "algorithm_engineer"],
+          "recommendation_reason": "Формальная логика укрепляет основу для доказательства свойств алгоритмов и проверки исследовательских гипотез.",
+          "result_tags": [
+            "formal_models"
+          ]
+        }
+      ],
+      "estimated_seconds": 28,
+      "save_as": "selected_semester_3_interest",
+      "next_step_id": "semester_3_programming_choice",
+      "show_if": {
+        "step_id": "profile_choice",
+        "option_id": "ai_and_programming_profile"
+      }
+    },
+    {
+      "step_id": "semester_3_programming_choice",
+      "type": "interest_choice",
+      "semester": 3,
+      "choice_category": "professional_elective",
+      "source_elective_group_ref": "GRP_169",
+      "title": "3 семестр. Какой тип программ хочется попробовать создавать?",
+      "intro": "В профиле алгоритмов и программирования это реальный выбор одной дисциплины из блока третьего семестра.",
+      "options": [
+        {
+          "option_id": "programming_web",
+          "title": "Веб-приложения",
+          "description": "Создавать интерфейс в браузере и связывать его с серверной частью приложения.",
+          "discipline_refs": [
+            "DISC_58485_R177"
+          ],
+          "skill_refs": [
+            "web_development",
+            "backend",
+            "ui_ux"
+          ],
+          "learning_benefit": "Ты увидишь полный путь данных от действий пользователя до серверной логики.",
+          "career_context": "Полезно в продуктовой и веб-разработке.",
+          "recommended_for_career_refs": ["software_engineer"],
+          "recommendation_reason": "Веб-программирование напрямую связано с созданием клиент-серверных приложений и программных продуктов.",
+          "result_tags": [
+            "web_applications"
+          ]
+        },
+        {
+          "option_id": "programming_mobile",
+          "title": "Мобильные приложения",
+          "description": "Разобраться в правилах построения приложений для мобильных устройств.",
+          "discipline_refs": [
+            "DISC_58593_R178"
+          ],
+          "skill_refs": [
+            "programming",
+            "software_engineering"
+          ],
+          "learning_benefit": "Ты попробуешь превратить требования к продукту в приложение, которым можно пользоваться на телефоне.",
+          "career_context": "Полезно для мобильной и продуктовой разработки.",
+          "recommended_for_career_refs": ["software_engineer"],
+          "recommendation_reason": "Мобильное приложение даёт практику разработки законченного программного продукта для пользователя.",
+          "result_tags": [
+            "mobile_applications"
+          ]
+        },
+        {
+          "option_id": "programming_system_language",
+          "title": "Системное программирование",
+          "description": "Попробовать Rust и внимательнее работать с памятью, типами и надёжностью кода.",
+          "discipline_refs": [
+            "DISC_58561_R171"
+          ],
+          "skill_refs": [
+            "programming",
+            "systems",
+            "software_engineering"
+          ],
+          "learning_benefit": "Ты увидишь, как язык помогает предотвращать часть ошибок ещё до запуска программы.",
+          "career_context": "Полезно в системной разработке и программах с высокими требованиями к надёжности.",
+          "recommended_for_career_refs": ["software_engineer", "algorithm_engineer"],
+          "recommendation_reason": "Rust помогает внимательнее работать с памятью, производительностью и надёжностью программных компонентов.",
+          "result_tags": [
+            "systems_programming"
+          ]
+        }
+      ],
+      "estimated_seconds": 28,
+      "save_as": "selected_semester_3_interest",
+      "next_step_id": "semester_4_summary",
+      "show_if": {
+        "step_id": "profile_choice",
+        "option_id": "algorithms_and_programming_profile"
+      }
+    },
+    {
+      "step_id": "semester_4_summary",
+      "type": "semester_summary",
+      "semester": 4,
+      "title": "4 семестр. Проверяешь решения данными и математикой",
+      "what_appears": "Математическая статистика и более глубокие дисциплины выбранного профиля.",
+      "what_student_does": "Работает с неопределённостью, сравнивает результаты и учится обосновывать выводы, а не доверять одному удачному запуску.",
+      "what_student_learns": "Проверять гипотезы, интерпретировать результаты и видеть ограничения модели или алгоритма.",
+      "where_it_is_used": "Это важно в экспериментах, анализе данных, тестировании программ и оценке новых технических решений.",
+      "discipline_refs": [
+        "DISC_58496_R229",
+        "DISC_58598_R227"
+      ],
+      "estimated_seconds": 12,
+      "next_step_id": "semester_5_ai_choice"
+    },
+    {
+      "step_id": "semester_5_ai_choice",
+      "type": "interest_choice",
+      "semester": 5,
+      "choice_category": "professional_elective",
+      "source_elective_group_ref": "GRP_28",
+      "title": "5 семестр. Какую сложную задачу хочется разобрать глубже?",
+      "intro": "В профиле ИИ это реальный выбор одной дисциплины из блока пятого семестра.",
+      "options": [
+        {
+          "option_id": "ai_fast_computing",
+          "title": "Ускорять тяжёлые вычисления",
+          "description": "Разобраться в параллельных вычислениях и запуске программ на видеокартах.",
+          "discipline_refs": [
+            "DISC_58599_R29"
+          ],
+          "skill_refs": [
+            "optimization",
+            "systems",
+            "programming"
+          ],
+          "learning_benefit": "Ты поймёшь, почему обучение моделей требует много вычислений и как часть работы выполнять параллельно.",
+          "career_context": "Полезно при разработке и ускорении вычислительных и ML-систем.",
+          "recommended_for_career_refs": ["ml_engineer", "algorithm_engineer"],
+          "recommendation_reason": "Параллельные вычисления на видеокартах важны для ускорения обучения моделей и тяжёлых алгоритмов.",
+          "result_tags": [
+            "high_performance_computing"
+          ]
+        },
+        {
+          "option_id": "ai_algorithm_depth",
+          "title": "Решать более сложные алгоритмические задачи",
+          "description": "Изучить продвинутые структуры данных и способы оценивать эффективность решений.",
+          "discipline_refs": [
+            "DISC_58578_R31"
+          ],
+          "skill_refs": [
+            "algorithms",
+            "optimization",
+            "programming"
+          ],
+          "learning_benefit": "Ты сможешь точнее выбирать алгоритм для задачи и понимать границы его применимости.",
+          "career_context": "Полезно в инженерии алгоритмов и разработке сложных программных систем.",
+          "recommended_for_career_refs": ["algorithm_engineer", "software_engineer"],
+          "recommendation_reason": "Продвинутые алгоритмы напрямую развивают умение выбирать эффективное решение и оценивать его сложность.",
+          "result_tags": [
+            "advanced_algorithms"
+          ]
+        },
+        {
+          "option_id": "ai_learning_theory",
+          "title": "Понять, почему модель учится и когда ошибается",
+          "description": "Разобраться в математических принципах статистического обучения.",
+          "discipline_refs": [
+            "DISC_58579_R33"
+          ],
+          "skill_refs": [
+            "machine_learning",
+            "mathematics",
+            "research"
+          ],
+          "learning_benefit": "Ты научишься смотреть на модель не как на чёрный ящик, а как на метод с предпосылками и ограничениями.",
+          "career_context": "Полезно в ML-разработке и исследовательской работе.",
+          "recommended_for_career_refs": ["ml_engineer", "research_engineer"],
+          "recommendation_reason": "Теория статистического обучения помогает понимать ограничения моделей и обосновывать результаты экспериментов.",
+          "result_tags": [
+            "learning_theory"
+          ]
+        }
+      ],
+      "estimated_seconds": 28,
+      "save_as": "selected_semester_5_interest",
+      "next_step_id": "semester_5_programming_choice",
+      "show_if": {
+        "step_id": "profile_choice",
+        "option_id": "ai_and_programming_profile"
+      }
+    },
+    {
+      "step_id": "semester_5_programming_choice",
+      "type": "interest_choice",
+      "semester": 5,
+      "choice_category": "professional_elective",
+      "source_elective_group_ref": "GRP_127",
+      "title": "5 семестр. Какую часть большой системы хочется изучить глубже?",
+      "intro": "В профиле алгоритмов и программирования это реальный выбор двух дисциплин. На экране показаны понятные направления; внутри каждого — реальные примеры из общего блока выбора.",
+      "options": [
+        {
+          "option_id": "programming_data_methods",
+          "title": "Извлекать полезную информацию из данных",
+          "description": "Познакомиться с методами анализа данных и искусственного интеллекта.",
+          "discipline_refs": [
+            "DISC_58582_R128",
+            "DISC_58566_R129"
+          ],
+          "skill_refs": [
+            "data",
+            "ai_tools",
+            "mathematics"
+          ],
+          "learning_benefit": "Ты добавишь к программированию способы исследовать данные и строить интеллектуальные функции.",
+          "career_context": "Полезно разработчику систем с аналитикой или элементами ИИ.",
+          "recommended_for_career_refs": ["ml_engineer", "research_engineer"],
+          "recommendation_reason": "Методы анализа данных и ИИ связаны с подготовкой данных, моделями и проверкой гипотез.",
+          "result_tags": [
+            "data_features"
+          ]
+        },
+        {
+          "option_id": "programming_industrial_code",
+          "title": "Разрабатывать код как часть большого продукта",
+          "description": "Сосредоточиться на промышленном программировании и более сложных алгоритмах.",
+          "discipline_refs": [
+            "DISC_58535_R139",
+            "DISC_58578_R144"
+          ],
+          "skill_refs": [
+            "software_engineering",
+            "programming",
+            "algorithms"
+          ],
+          "learning_benefit": "Ты потренируешься писать поддерживаемый код и выбирать решения, которые выдерживают рост задачи.",
+          "career_context": "Полезно в промышленной разработке и инженерии алгоритмов.",
+          "recommended_for_career_refs": ["software_engineer", "algorithm_engineer"],
+          "recommendation_reason": "Сочетание промышленного программирования и алгоритмов помогает создавать поддерживаемые и эффективные системы.",
+          "result_tags": [
+            "industrial_software"
+          ]
+        },
+        {
+          "option_id": "programming_interfaces",
+          "title": "Связать программирование с пользовательским интерфейсом",
+          "description": "Разобраться, как устроена клиентская часть продукта и как технические решения влияют на взаимодействие пользователя с системой.",
+          "discipline_refs": [
+            "DISC_58538_R137",
+            "DISC_58580_R133"
+          ],
+          "skill_refs": [
+            "web_development",
+            "ui_ux",
+            "programming"
+          ],
+          "learning_benefit": "Ты увидишь связь между устройством программы и тем, как человек воспринимает готовый продукт.",
+          "career_context": "Полезно во фронтенд- и продуктовой разработке.",
+          "recommended_for_career_refs": ["software_engineer"],
+          "recommendation_reason": "Интерфейсы и клиентское программирование связывают устройство системы с готовым пользовательским продуктом.",
+          "result_tags": [
+            "product_interfaces"
+          ]
+        }
+      ],
+      "estimated_seconds": 28,
+      "save_as": "selected_semester_5_interest",
+      "next_step_id": "semester_6_summary",
+      "show_if": {
+        "step_id": "profile_choice",
+        "option_id": "algorithms_and_programming_profile"
+      }
+    },
+    {
+      "step_id": "semester_6_summary",
+      "type": "semester_summary",
+      "semester": 6,
+      "title": "6 семестр. Соединяешь части системы",
+      "what_appears": "Распределённое программирование, компьютерные сети или профильные дисциплины, а также учебная практика.",
+      "what_student_does": "Разбирается, как несколько программ и компьютеров обмениваются данными, и применяет знания в более крупной задаче.",
+      "what_student_learns": "Проектировать взаимодействие компонентов и учитывать ошибки сети, нагрузку и ограничения инфраструктуры.",
+      "where_it_is_used": "Так устроены веб-сервисы, облачные продукты, платформы обработки данных и многие ML-системы.",
+      "discipline_refs": [
+        "DISC_58544_R219",
+        "DISC_58480_R191"
+      ],
+      "estimated_seconds": 12,
+      "next_step_id": "semester_7_summary"
+    },
+    {
+      "step_id": "semester_7_summary",
+      "type": "semester_summary",
+      "semester": 7,
+      "title": "7 семестр. Углубляешься в профессиональную область",
+      "what_appears": "Продвинутые выборные дисциплины, профессиональный трек или семинар и более самостоятельная работа.",
+      "what_student_does": "Берёт задачу с меньшим количеством готовых инструкций, изучает источники и защищает принятые технические решения.",
+      "what_student_learns": "Связывать фундаментальные знания с конкретной областью и доводить работу до объяснимого результата.",
+      "where_it_is_used": "Это приближает учебную работу к задачам стажировки, исследовательского проекта или выпускной работы.",
+      "discipline_refs": [
+        "DISC_58489_R203",
+        "DISC_58467_R209"
+      ],
+      "estimated_seconds": 12,
+      "next_step_id": "semester_8_summary"
+    },
+    {
+      "step_id": "semester_8_summary",
+      "type": "semester_summary",
+      "semester": 8,
+      "title": "8 семестр. Собираешь знания в итоговую работу",
+      "what_appears": "Продолжение профессионального трека и преддипломная производственная практика.",
+      "what_student_does": "Формулирует задачу, выбирает методы, создаёт или исследует решение и представляет полученный результат.",
+      "what_student_learns": "Самостоятельно планировать крупную работу, обосновывать решения и показывать, что именно получилось.",
+      "where_it_is_used": "Итоговый проект может стать основой разговора о стажировке, первой работе или продолжении исследований, но сам по себе не гарантирует трудоустройство.",
+      "discipline_refs": [
+        "DISC_58490_R204",
+        "DISC_58468_R210"
+      ],
+      "estimated_seconds": 12,
+      "next_step_id": "career_center_case"
+    },
+    {
+      "step_id": "career_center_case",
+      "type": "career_center_situation",
+      "title": "Проект уже есть. Как превратить его в следующий карьерный шаг?",
+      "situation": "Выбери проблему, с которой ты можешь столкнуться во время обучения. После выбора сайт покажет конкретный способ обратиться к возможностям ЦКО.",
+      "program_specific_context": "Для ИТ-направления важно показать не только технологии, но и задачу, принятые решения, личный вклад, проверку результата и ссылку на работающий код или демонстрацию, если её можно открыть.",
+      "options": [
+        {
+          "option_id": "prepare_project_story",
+          "title": "Не понимаю, как описать учебный проект",
+          "resource_refs": [
+            "resume",
+            "career_consultation"
+          ],
+          "outcome": "На карьерной консультации можно разобрать задачу, твой личный вклад и результат, а затем адаптировать это описание для резюме.",
+          "outcome_by_career": {
+            "software_engineer": "Для позиции разработчика стоит показать архитектуру решения, написанные компоненты, тестирование и то, как изменился работающий продукт.",
+            "ml_engineer": "Для позиции ML Engineer стоит показать данные, выбранную модель, способ оценки качества и то, как эксперимент был превращён в воспроизводимое решение.",
+            "research_engineer": "Для исследовательской позиции стоит показать гипотезу, устройство эксперимента, сравнение методов и выводы из результата.",
+            "algorithm_engineer": "Для позиции инженера по алгоритмам стоит показать постановку задачи, выбранный алгоритм, оценку сложности и выигрыш по времени или памяти."
+          },
+          "result_tags": [
+            "project_presentation"
+          ]
+        },
+        {
+          "option_id": "find_relevant_internship",
+          "title": "Не могу найти подходящую стажировку",
+          "resource_refs": [
+            "internships",
+            "vacancies"
+          ],
+          "outcome": "Можно использовать каналы стажировок и вакансий ЦКО, а требования выбранных позиций разобрать на консультации и сопоставить со своими дисциплинами и проектами.",
+          "outcome_by_career": {
+            "software_engineer": "Ищи задачи по разработке, backend, системному или продуктовому программированию и сопоставляй стек с собственными проектами.",
+            "ml_engineer": "Ищи стажировки, где указаны Python, данные, обучение или внедрение моделей, и проверяй, какой проект подтверждает каждый навык.",
+            "research_engineer": "Обращай внимание на исследовательские стажировки, лаборатории и R&D-команды, где важны эксперименты, математика и прототипирование.",
+            "algorithm_engineer": "Ищи позиции с алгоритмами, оптимизацией, графами или высокопроизводительными вычислениями и готовь примеры решения задач."
+          },
+          "result_tags": [
+            "internship_search"
+          ]
+        },
+        {
+          "option_id": "prepare_for_interview",
+          "title": "Переживаю из-за первого собеседования",
+          "resource_refs": [
+            "interview",
+            "career_consultation"
+          ],
+          "outcome": "Подготовка к собеседованию поможет структурировать рассказ о проекте, потренировать ответы и определить темы, которые стоит повторить.",
+          "outcome_by_career": {
+            "software_engineer": "Потренируйся объяснять устройство проекта, работу с кодом, ошибки, тесты и выбор технологий.",
+            "ml_engineer": "Потренируйся объяснять подготовку данных, выбор метрик, обучение модели, ошибки и ограничения результата.",
+            "research_engineer": "Потренируйся объяснять гипотезу, методику эксперимента, отрицательные результаты и сделанные выводы.",
+            "algorithm_engineer": "Потренируйся проговаривать ход решения, структуры данных, сложность алгоритма и возможные компромиссы."
+          },
+          "result_tags": [
+            "interview_preparation"
+          ]
+        },
+        {
+          "option_id": "check_skill_readiness",
+          "title": "Не понимаю, хватает ли мне навыков для первого отклика",
+          "resource_refs": [
+            "career_consultation",
+            "internships",
+            "vacancies"
+          ],
+          "outcome": "На консультации можно разобрать требования нескольких начальных позиций, отметить уже подтверждённые навыки и выбрать один-два пробела, которые реально закрыть дисциплиной или проектом.",
+          "outcome_by_career": {
+            "software_engineer": "Сравни требования по языкам, алгоритмам, базам данных, тестированию и командной разработке со своими учебными проектами.",
+            "ml_engineer": "Сравни требования по Python, данным, моделям, метрикам и внедрению со своими дисциплинами и ML-проектами.",
+            "research_engineer": "Проверь, можешь ли ты показать математическую базу, постановку эксперимента, анализ результатов и работающий прототип.",
+            "algorithm_engineer": "Проверь алгоритмы, структуры данных, оценку сложности, математику и примеры оптимизации решения."
+          },
+          "result_tags": [
+            "skill_gap_analysis"
+          ]
+        }
+      ],
+      "estimated_seconds": 42,
+      "save_as": "selected_career_center_help",
+      "next_step_id": "result"
+    },
+    {
+      "step_id": "result",
+      "type": "result",
+      "title": "Какие возможности программы оказались тебе ближе",
+      "estimated_seconds": 26
+    }
+  ],
+  "result_config": {
+    "framing": "Тебе оказались ближе такие возможности программы. Это не рекомендация учебного плана и не назначение профессии: реальные дисциплины и правила выбора нужно сверять с актуальными документами программы.",
+    "sections": [
+      "career_goal",
+      "selected_profile",
+      "program_interests",
+      "related_disciplines",
+      "skills_to_try",
+      "projects_and_practices",
+      "career_contexts",
+      "career_center_overview",
+      "career_center_next_steps",
+      "personalized_recommendations"
+    ],
+    "prohibited_claims": [
+      "official_individual_plan",
+      "employment_guarantee",
+      "profession_assignment",
+      "discipline_recommendation"
+    ]
+  }
+}
