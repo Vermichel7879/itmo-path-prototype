@@ -33,16 +33,16 @@
 
 ## PHASE 2 — PostgreSQL и импорт
 
-- [ ] Выбрать server-only PostgreSQL layer и зафиксировать решение в архитектуре.
-- [ ] Создать Supabase/PostgreSQL migrations для всех сущностей и ограничений.
-- [ ] Реализовать draft и immutable published snapshots.
-- [ ] Описать Zod schemas для DB boundaries и import model.
-- [ ] Создать read-only importer текущего xlsx в draft.
-- [ ] Добавить dry-run/diff: added, changed, removed.
-- [ ] Добавить seed без runtime-зависимости от Excel.
-- [ ] Добавить tests на schema, importer и draft/published separation.
-- [ ] Пройти quality gates.
-- [ ] STOP и запросить разрешение на PHASE 3.
+- [x] Выбрать server-only PostgreSQL layer и зафиксировать решение в архитектуре.
+- [x] Создать Supabase/PostgreSQL migrations для всех сущностей и ограничений.
+- [x] Реализовать draft и immutable published snapshots.
+- [x] Описать Zod schemas для DB boundaries и import model.
+- [x] Создать read-only importer текущего xlsx в draft.
+- [x] Добавить dry-run/diff: added, changed, removed.
+- [x] Добавить seed без runtime-зависимости от Excel.
+- [x] Добавить tests на schema, importer и draft/published separation.
+- [x] Пройти quality gates.
+- [x] STOP и запросить разрешение на PHASE 3.
 
 ## PHASE 3 — rule engine и реальные данные
 

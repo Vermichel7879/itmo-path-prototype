@@ -2,7 +2,7 @@
 
 ## 1. Статус документа
 
-Это целевая архитектура, зафиксированная в PHASE 0. Сейчас в коде присутствует только чистый Next.js scaffold. Компоненты следующих фаз описаны здесь как границы реализации, а не как уже готовая функциональность.
+Документ обновлён по итогам PHASE 2. Frontend PHASE 1 и database foundation PHASE 2 реализованы; production rule engine, публикация через admin UI, auth и PDF остаются границами следующих фаз.
 
 ## 2. Назначение и ограничения
 
@@ -18,11 +18,13 @@
 - React 19 и TypeScript strict;
 - Tailwind CSS 4;
 - PostgreSQL в Supabase как managed database;
+- Drizzle ORM 0.45 как типизированная schema/query layer;
+- `postgres.js` как server-only PostgreSQL driver с `prepare: false` для совместимости с Supabase transaction pooler;
 - Zod для проверки всех входных данных на серверной границе;
 - серверные sessions для admin panel;
 - отдельный серверный PDF renderer, получающий готовый `TrajectoryResult`.
 
-Драйвер/ORM, библиотека сессий и PDF-библиотека будут выбраны перед фазой, в которой они появляются. Это не должно менять доменные интерфейсы.
+Drizzle выбран вместо client-side Supabase SDK: схема, запросы и migrations остаются PostgreSQL-совместимыми, прозрачными и не переносят бизнес-логику в браузер. Библиотека хеширования паролей и PDF-библиотека будут выбраны в соответствующих фазах.
 
 ## 4. Архитектурные принципы
 
@@ -87,15 +89,19 @@ source/                    # исходные материалы, read-only
 
 ### Импорт Excel
 
-Importer читает `source/*.xlsx`, преобразует поддерживаемые листы в типизированную промежуточную модель, показывает diff и применяет его только к draft. Повторный импорт никогда напрямую не перезаписывает published snapshot.
+Importer читает обязательные листы XLSX напрямую как OOXML ZIP/XML, преобразует их в Zod-валидированную промежуточную модель, проверяет стабильные ID и ссылки и показывает diff. `db:import:dry` не импортирует database client и работает без `DATABASE_URL`; режим записи заменяет только единственный draft внутри транзакции. Повторный импорт никогда не перезаписывает published snapshot.
+
+Checked-in `career-config-v2.json` содержит тот же валидированный snapshot и позволяет выполнить seed без runtime-доступа к `source/`. Файл Excel остаётся read-only и не попадает в Git.
 
 ## 7. Модель данных
 
 Основные нормализованные сущности: `questions`, `answers`, `answer_module_weights`, `modules`, `modifiers`, `recommendations`, `module_recommendations`, `opportunities`, `entrepreneur_stages`, `entrepreneur_challenges`, `config_versions`, `admin_users`, `admin_sessions`, `audit_log`.
 
-`config_versions` хранит статус, номер версии, автора, время публикации и полный immutable JSONB snapshot бизнес-конфигурации. Draft-таблицы удобны для CRUD; snapshot обеспечивает воспроизводимость публичного результата и regression tests.
+`config_versions` хранит статус, номер версии, автора, source SHA-256, время публикации и полный JSONB snapshot бизнес-конфигурации. Все версионируемые сущности имеют `config_version_id`. Draft-таблицы удобны для CRUD; публичный код читает только snapshot последней PUBLISHED-версии.
 
-Все внешние ключи и уникальные ограничения закрепляются в SQL migrations. Удаление справочных объектов по умолчанию логическое (`active=false`), если объект уже участвовал в опубликованной конфигурации.
+Переход DRAFT → PUBLISHED будет выполняться транзакцией PHASE 4. После перехода PostgreSQL trigger запрещает update/delete строки опубликованной версии, а CHECK запрещает публиковать пустой snapshot. Редактирование draft поэтому не влияет на уже опубликованный результат.
+
+Реализованы 14 таблиц: `admin_users`, `admin_sessions`, `config_versions`, `questions`, `answers`, `answer_module_weights`, `modules`, `modifiers`, `recommendations`, `module_recommendations`, `opportunities`, `entrepreneur_stages`, `entrepreneur_challenges`, `audit_log`. Внешние ключи, cross-version composite FK, indexes, unique/check constraints и soft-disable `active` закреплены в migrations.
 
 ## 8. Rule engine
 
@@ -134,9 +140,10 @@ calculateTrajectory(config: PublishedConfig, answerIds: AnswerId[]): TrajectoryR
 
 Существующий Git remote и существующая Vercel-привязка сохраняются. Новый Vercel project не создаётся. Production получает Supabase connection string и secrets только через environment variables. Миграции выполняются отдельным контролируемым шагом до выкладки приложения.
 
+Для migrations используется Direct connection или Session pooler; для serverless runtime — Transaction pooler. Реальные `.env*` игнорируются, а `.env.example` содержит только пустые placeholders.
+
 ## 12. Отложенные решения
 
-- конкретный PostgreSQL driver/ORM;
 - формат краткоживущей передачи готового результата в PDF endpoint без персональных данных;
 - библиотека PDF и стратегия подключения Golos/ALS Gorizont при наличии разрешённых font files;
 - необходимость хранения анонимных технических событий и срок их retention.

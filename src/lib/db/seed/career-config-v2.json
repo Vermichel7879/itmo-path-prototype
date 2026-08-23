@@ -1,0 +1,2538 @@
+{
+  "source": {
+    "fileName": "Карьерная_траектория_ЦКО_источник_v2.xlsx",
+    "sha256": "EFC16A1C08A5019C05962ADD9C6390FB03F9DE9A28AA56FE3495A7F1C76181F2",
+    "workbookVersion": "v2 — расширенная анкета + предпринимательский трек.",
+    "recognizedSheets": [
+      "00_README",
+      "01_Анкета",
+      "02_Маппинг",
+      "03_Модули",
+      "04_Рекомендации",
+      "05_Правила_сборки",
+      "06_Примеры",
+      "08_Как_редактировать",
+      "09_Предпринимательство"
+    ],
+    "readme": {
+      "Что это": "Rule-based источник для веб-формы и сборки персонального PDF. Это не диагностика: вариативность создаётся комбинацией модулей и модификаторов.",
+      "Источник опроса": "2026-08-20 Опрос Центра карьеры обучающихся.xlsx; 237 ответов.",
+      "Принцип": "Ответы со скорингом дают веса карьерным модулям. В PDF попадают 1 основной + до 2 поддерживающих модулей.",
+      "Анкета": "8 общих вопросов. При интересе к предпринимательству автоматически показываются ещё 2 вопроса.",
+      "Главные ветки": "Выбор направления; поиск возможностей; первый опыт; навыки; резюме/отклик; собеседование; тестовые; устойчивый поиск; выбор оффера; развитие во время учёбы; предпринимательство.",
+      "Предпринимательство": "В исходном опросе 52 из 237 студентов (21,9%) отметили интерес к встречам с предпринимателями. В v2 добавлен M11 и условная подветка Q9–Q10.",
+      "Рекомендации": "Сервисы ЦКО + мероприятия + клубы + факультетские активности + общие рекомендации. Не каждый модуль обязан содержать сервис ЦКО, если он нерелевантен.",
+      "Как менять": "Короткая инструкция — лист «08_Как_редактировать». Предпринимательские стадии и подзадачи — лист «09_Предпринимательство».",
+      "Приватность": "Не используются ID и номера ИСУ респондентов; только агрегированная статистика и обезличенные темы.",
+      "Версия": "v2 — расширенная анкета + предпринимательский трек."
+    }
+  },
+  "questions": [
+    {
+      "stableId": "Q1",
+      "block": "Этап",
+      "text": "Что лучше всего описывает вашу ситуацию сейчас?",
+      "selectionType": "SINGLE",
+      "minSelect": 1,
+      "maxSelect": 1,
+      "required": true,
+      "sortOrder": 1,
+      "showCondition": null,
+      "active": true
+    },
+    {
+      "stableId": "Q2",
+      "block": "Основная сложность",
+      "text": "С чем сейчас сложнее всего?",
+      "selectionType": "MULTI",
+      "minSelect": 1,
+      "maxSelect": 3,
+      "required": true,
+      "sortOrder": 2,
+      "showCondition": null,
+      "active": true
+    },
+    {
+      "stableId": "Q3",
+      "block": "Цель",
+      "text": "Что вы хотите получить в ближайшее время?",
+      "selectionType": "MULTI",
+      "minSelect": 1,
+      "maxSelect": 2,
+      "required": true,
+      "sortOrder": 3,
+      "showCondition": null,
+      "active": true
+    },
+    {
+      "stableId": "Q4",
+      "block": "Что уже есть",
+      "text": "Что у вас уже есть?",
+      "selectionType": "MULTI",
+      "minSelect": 0,
+      "maxSelect": 7,
+      "required": false,
+      "sortOrder": 4,
+      "showCondition": null,
+      "active": true
+    },
+    {
+      "stableId": "Q5",
+      "block": "Формат карьеры",
+      "text": "Какой формат профессионального развития вам сейчас ближе?",
+      "selectionType": "MULTI",
+      "minSelect": 1,
+      "maxSelect": 2,
+      "required": true,
+      "sortOrder": 5,
+      "showCondition": null,
+      "active": true
+    },
+    {
+      "stableId": "Q6",
+      "block": "Ориентиры",
+      "text": "Что для вас сейчас особенно важно в работе и карьере?",
+      "selectionType": "MULTI",
+      "minSelect": 1,
+      "maxSelect": 3,
+      "required": true,
+      "sortOrder": 6,
+      "showCondition": null,
+      "active": true
+    },
+    {
+      "stableId": "Q7",
+      "block": "Темп",
+      "text": "Сколько времени вы реально готовы выделять на карьерные шаги в неделю?",
+      "selectionType": "SINGLE",
+      "minSelect": 1,
+      "maxSelect": 1,
+      "required": true,
+      "sortOrder": 7,
+      "showCondition": null,
+      "active": true
+    },
+    {
+      "stableId": "Q8",
+      "block": "Формат поддержки",
+      "text": "Какой формат поддержки вам удобнее?",
+      "selectionType": "MULTI",
+      "minSelect": 0,
+      "maxSelect": 2,
+      "required": false,
+      "sortOrder": 8,
+      "showCondition": null,
+      "active": true
+    },
+    {
+      "stableId": "Q9",
+      "block": "Предпринимательство — стадия",
+      "text": "На каком этапе вы сейчас в предпринимательстве?",
+      "selectionType": "SINGLE",
+      "minSelect": 1,
+      "maxSelect": 1,
+      "required": true,
+      "sortOrder": 9,
+      "showCondition": {
+        "expression": "entrepreneur_signal = true"
+      },
+      "active": true
+    },
+    {
+      "stableId": "Q10",
+      "block": "Предпринимательство — задача",
+      "text": "Что в предпринимательском треке сейчас сложнее всего?",
+      "selectionType": "MULTI",
+      "minSelect": 1,
+      "maxSelect": 2,
+      "required": true,
+      "sortOrder": 10,
+      "showCondition": {
+        "expression": "entrepreneur_signal = true"
+      },
+      "active": true
+    }
+  ],
+  "answers": [
+    {
+      "stableId": "Q1_A1",
+      "questionStableId": "Q1",
+      "text": "Ещё не искал(а) работу или стажировку",
+      "sortOrder": 1,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q1_A2",
+      "questionStableId": "Q1",
+      "text": "Только начинаю искать",
+      "sortOrder": 2,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q1_A3",
+      "questionStableId": "Q1",
+      "text": "Активно откликаюсь",
+      "sortOrder": 3,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q1_A4",
+      "questionStableId": "Q1",
+      "text": "Уже прохожу собеседования и тестовые",
+      "sortOrder": 4,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q1_A5",
+      "questionStableId": "Q1",
+      "text": "Выбираю между несколькими вариантами",
+      "sortOrder": 5,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q1_A6",
+      "questionStableId": "Q1",
+      "text": "Уже работаю/стажируюсь и хочу развиваться",
+      "sortOrder": 6,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q1_A7",
+      "questionStableId": "Q1",
+      "text": "Хочу запустить собственный проект или уже его развиваю",
+      "sortOrder": 7,
+      "tags": [
+        "entrepreneur_signal"
+      ],
+      "keys": [
+        "entrepreneur_signal"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A1",
+      "questionStableId": "Q2",
+      "text": "Не понимаю, с чего начать",
+      "sortOrder": 1,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A2",
+      "questionStableId": "Q2",
+      "text": "Не понимаю, на какие позиции могу претендовать",
+      "sortOrder": 2,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A3",
+      "questionStableId": "Q2",
+      "text": "Не могу найти подходящие вакансии или стажировки",
+      "sortOrder": 3,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A4",
+      "questionStableId": "Q2",
+      "text": "Не хватает профессионального опыта",
+      "sortOrder": 4,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A5",
+      "questionStableId": "Q2",
+      "text": "Не понимаю, какие навыки нужны работодателям",
+      "sortOrder": 5,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A6",
+      "questionStableId": "Q2",
+      "text": "Не понимаю, насколько мои навыки соответствуют рынку",
+      "sortOrder": 6,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A7",
+      "questionStableId": "Q2",
+      "text": "Сложно составить сильное резюме",
+      "sortOrder": 7,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A8",
+      "questionStableId": "Q2",
+      "text": "Откликаюсь, но почти не получаю приглашений",
+      "sortOrder": 8,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A9",
+      "questionStableId": "Q2",
+      "text": "Сложно проходить собеседования",
+      "sortOrder": 9,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A10",
+      "questionStableId": "Q2",
+      "text": "Сложно выполнять тестовые задания",
+      "sortOrder": 10,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A11",
+      "questionStableId": "Q2",
+      "text": "Трудно совмещать поиск работы с учёбой",
+      "sortOrder": 11,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A12",
+      "questionStableId": "Q2",
+      "text": "Отказы демотивируют или страшно откликаться",
+      "sortOrder": 12,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A13",
+      "questionStableId": "Q2",
+      "text": "Сложно выбрать между несколькими вариантами",
+      "sortOrder": 13,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A14",
+      "questionStableId": "Q2",
+      "text": "Хочу попробовать предпринимательство, но не понимаю, с чего начать",
+      "sortOrder": 14,
+      "tags": [
+        "entrepreneur_signal"
+      ],
+      "keys": [
+        "entrepreneur_signal"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q2_A15",
+      "questionStableId": "Q2",
+      "text": "Есть идея или проект, но не понимаю, как проверить спрос и двигаться дальше",
+      "sortOrder": 15,
+      "tags": [
+        "entrepreneur_signal"
+      ],
+      "keys": [
+        "entrepreneur_signal"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A1",
+      "questionStableId": "Q3",
+      "text": "Выбрать карьерное направление",
+      "sortOrder": 1,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A2",
+      "questionStableId": "Q3",
+      "text": "Найти работу или стажировку",
+      "sortOrder": 2,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A3",
+      "questionStableId": "Q3",
+      "text": "Получить первый профессиональный опыт",
+      "sortOrder": 3,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A4",
+      "questionStableId": "Q3",
+      "text": "Понять, какие навыки развивать",
+      "sortOrder": 4,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A5",
+      "questionStableId": "Q3",
+      "text": "Составить или улучшить резюме",
+      "sortOrder": 5,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A6",
+      "questionStableId": "Q3",
+      "text": "Научиться писать отклики и сопроводительные",
+      "sortOrder": 6,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A7",
+      "questionStableId": "Q3",
+      "text": "Подготовиться к собеседованиям",
+      "sortOrder": 7,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A8",
+      "questionStableId": "Q3",
+      "text": "Лучше выполнять тестовые задания",
+      "sortOrder": 8,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A9",
+      "questionStableId": "Q3",
+      "text": "Выстроить поиск без перегруза",
+      "sortOrder": 9,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A10",
+      "questionStableId": "Q3",
+      "text": "Выбрать стажировку или оффер",
+      "sortOrder": 10,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A11",
+      "questionStableId": "Q3",
+      "text": "Развивать карьеру во время учёбы",
+      "sortOrder": 11,
+      "tags": [],
+      "keys": [],
+      "active": true
+    },
+    {
+      "stableId": "Q3_A12",
+      "questionStableId": "Q3",
+      "text": "Проверить идею или запустить собственный проект",
+      "sortOrder": 12,
+      "tags": [
+        "entrepreneur_signal"
+      ],
+      "keys": [
+        "entrepreneur_signal"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q4_A1",
+      "questionStableId": "Q4",
+      "text": "Есть понятная целевая роль или направление",
+      "sortOrder": 1,
+      "tags": [
+        "validate_direction"
+      ],
+      "keys": [
+        "validate_direction"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q4_A2",
+      "questionStableId": "Q4",
+      "text": "Есть актуальное резюме",
+      "sortOrder": 2,
+      "tags": [
+        "resume_audit"
+      ],
+      "keys": [
+        "resume_audit"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q4_A3",
+      "questionStableId": "Q4",
+      "text": "Есть портфолио / GitHub / кейсы",
+      "sortOrder": 3,
+      "tags": [
+        "evidence_exists"
+      ],
+      "keys": [
+        "evidence_exists"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q4_A4",
+      "questionStableId": "Q4",
+      "text": "Есть опыт проектов / практики / стажировки",
+      "sortOrder": 4,
+      "tags": [
+        "package_experience"
+      ],
+      "keys": [
+        "package_experience"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q4_A5",
+      "questionStableId": "Q4",
+      "text": "Есть список интересующих компаний или вакансий",
+      "sortOrder": 5,
+      "tags": [
+        "search_list_exists"
+      ],
+      "keys": [
+        "search_list_exists"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q4_A6",
+      "questionStableId": "Q4",
+      "text": "Есть идея собственного проекта",
+      "sortOrder": 6,
+      "tags": [
+        "entrepreneur_signal"
+      ],
+      "keys": [
+        "entrepreneur_signal"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q4_A7",
+      "questionStableId": "Q4",
+      "text": "Есть прототип, пользователи или первые продажи",
+      "sortOrder": 7,
+      "tags": [
+        "entrepreneur_signal"
+      ],
+      "keys": [
+        "entrepreneur_signal"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q5_A1",
+      "questionStableId": "Q5",
+      "text": "Работа в компании",
+      "sortOrder": 1,
+      "tags": [
+        "employment"
+      ],
+      "keys": [
+        "employment"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q5_A2",
+      "questionStableId": "Q5",
+      "text": "Стажировка / практика",
+      "sortOrder": 2,
+      "tags": [
+        "internship"
+      ],
+      "keys": [
+        "internship"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q5_A3",
+      "questionStableId": "Q5",
+      "text": "Проектная работа / фриланс",
+      "sortOrder": 3,
+      "tags": [
+        "project_work"
+      ],
+      "keys": [
+        "project_work"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q5_A4",
+      "questionStableId": "Q5",
+      "text": "Собственный проект / предпринимательство",
+      "sortOrder": 4,
+      "tags": [
+        "entrepreneur_signal"
+      ],
+      "keys": [
+        "entrepreneur_signal"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q5_A5",
+      "questionStableId": "Q5",
+      "text": "Пока не определился(ась)",
+      "sortOrder": 5,
+      "tags": [
+        "undecided"
+      ],
+      "keys": [
+        "undecided"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q6_A1",
+      "questionStableId": "Q6",
+      "text": "Интересные и содержательные задачи",
+      "sortOrder": 1,
+      "tags": [
+        "priority_tasks"
+      ],
+      "keys": [
+        "priority_tasks"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q6_A2",
+      "questionStableId": "Q6",
+      "text": "Быстрое развитие навыков",
+      "sortOrder": 2,
+      "tags": [
+        "priority_growth"
+      ],
+      "keys": [
+        "priority_growth"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q6_A3",
+      "questionStableId": "Q6",
+      "text": "Доход",
+      "sortOrder": 3,
+      "tags": [
+        "priority_income"
+      ],
+      "keys": [
+        "priority_income"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q6_A4",
+      "questionStableId": "Q6",
+      "text": "Гибкий график и возможность совмещать с учёбой",
+      "sortOrder": 4,
+      "tags": [
+        "priority_flex"
+      ],
+      "keys": [
+        "priority_flex"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q6_A5",
+      "questionStableId": "Q6",
+      "text": "Стабильность и понятные условия",
+      "sortOrder": 5,
+      "tags": [
+        "priority_stability"
+      ],
+      "keys": [
+        "priority_stability"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q6_A6",
+      "questionStableId": "Q6",
+      "text": "Сильная команда или наставник",
+      "sortOrder": 6,
+      "tags": [
+        "priority_team"
+      ],
+      "keys": [
+        "priority_team"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q6_A7",
+      "questionStableId": "Q6",
+      "text": "Самостоятельность и влияние на результат",
+      "sortOrder": 7,
+      "tags": [
+        "priority_autonomy"
+      ],
+      "keys": [
+        "priority_autonomy"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q7_A1",
+      "questionStableId": "Q7",
+      "text": "До 1 часа",
+      "sortOrder": 1,
+      "tags": [
+        "pace_light"
+      ],
+      "keys": [
+        "pace_light"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q7_A2",
+      "questionStableId": "Q7",
+      "text": "2–3 часа",
+      "sortOrder": 2,
+      "tags": [
+        "pace_normal"
+      ],
+      "keys": [
+        "pace_normal"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q7_A3",
+      "questionStableId": "Q7",
+      "text": "4–6 часов",
+      "sortOrder": 3,
+      "tags": [
+        "pace_active"
+      ],
+      "keys": [
+        "pace_active"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q7_A4",
+      "questionStableId": "Q7",
+      "text": "7 часов и больше",
+      "sortOrder": 4,
+      "tags": [
+        "pace_intensive"
+      ],
+      "keys": [
+        "pace_intensive"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q8_A1",
+      "questionStableId": "Q8",
+      "text": "Короткие материалы, подборки, чек-листы",
+      "sortOrder": 1,
+      "tags": [
+        "support_materials"
+      ],
+      "keys": [
+        "support_materials"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q8_A2",
+      "questionStableId": "Q8",
+      "text": "Индивидуальная помощь",
+      "sortOrder": 2,
+      "tags": [
+        "support_individual"
+      ],
+      "keys": [
+        "support_individual"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q8_A3",
+      "questionStableId": "Q8",
+      "text": "Живые мероприятия",
+      "sortOrder": 3,
+      "tags": [
+        "support_events"
+      ],
+      "keys": [
+        "support_events"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q8_A4",
+      "questionStableId": "Q8",
+      "text": "Практика, проекты и сообщества",
+      "sortOrder": 4,
+      "tags": [
+        "support_practice"
+      ],
+      "keys": [
+        "support_practice"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q8_A5",
+      "questionStableId": "Q8",
+      "text": "Не важно",
+      "sortOrder": 5,
+      "tags": [
+        "support_any"
+      ],
+      "keys": [
+        "support_any"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q9_A1",
+      "questionStableId": "Q9",
+      "text": "Только интересуюсь: конкретной идеи пока нет",
+      "sortOrder": 1,
+      "tags": [
+        "ent_stage_interest"
+      ],
+      "keys": [
+        "ent_stage_interest"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q9_A2",
+      "questionStableId": "Q9",
+      "text": "Есть идея, но я её ещё не проверял(а)",
+      "sortOrder": 2,
+      "tags": [
+        "ent_stage_idea"
+      ],
+      "keys": [
+        "ent_stage_idea"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q9_A3",
+      "questionStableId": "Q9",
+      "text": "Проверяю спрос или делаю прототип",
+      "sortOrder": 3,
+      "tags": [
+        "ent_stage_validation"
+      ],
+      "keys": [
+        "ent_stage_validation"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q9_A4",
+      "questionStableId": "Q9",
+      "text": "Есть первые пользователи или клиенты",
+      "sortOrder": 4,
+      "tags": [
+        "ent_stage_users"
+      ],
+      "keys": [
+        "ent_stage_users"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q9_A5",
+      "questionStableId": "Q9",
+      "text": "Есть продажи / действующий проект",
+      "sortOrder": 5,
+      "tags": [
+        "ent_stage_revenue"
+      ],
+      "keys": [
+        "ent_stage_revenue"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q10_A1",
+      "questionStableId": "Q10",
+      "text": "Найти идею или проблему, которую стоит решать",
+      "sortOrder": 1,
+      "tags": [
+        "ent_problem"
+      ],
+      "keys": [
+        "ent_problem"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q10_A2",
+      "questionStableId": "Q10",
+      "text": "Понять, кто моя аудитория и что ей действительно нужно",
+      "sortOrder": 2,
+      "tags": [
+        "ent_customer"
+      ],
+      "keys": [
+        "ent_customer"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q10_A3",
+      "questionStableId": "Q10",
+      "text": "Проверить, есть ли реальный спрос",
+      "sortOrder": 3,
+      "tags": [
+        "ent_demand"
+      ],
+      "keys": [
+        "ent_demand"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q10_A4",
+      "questionStableId": "Q10",
+      "text": "Сделать первый прототип / MVP",
+      "sortOrder": 4,
+      "tags": [
+        "ent_mvp"
+      ],
+      "keys": [
+        "ent_mvp"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q10_A5",
+      "questionStableId": "Q10",
+      "text": "Найти команду или недостающие компетенции",
+      "sortOrder": 5,
+      "tags": [
+        "ent_team"
+      ],
+      "keys": [
+        "ent_team"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q10_A6",
+      "questionStableId": "Q10",
+      "text": "Найти первых пользователей / клиентов",
+      "sortOrder": 6,
+      "tags": [
+        "ent_sales"
+      ],
+      "keys": [
+        "ent_sales"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q10_A7",
+      "questionStableId": "Q10",
+      "text": "Понять бизнес-модель и экономику проекта",
+      "sortOrder": 7,
+      "tags": [
+        "ent_model"
+      ],
+      "keys": [
+        "ent_model"
+      ],
+      "active": true
+    },
+    {
+      "stableId": "Q10_A8",
+      "questionStableId": "Q10",
+      "text": "Совмещать проект с учёбой и другими задачами",
+      "sortOrder": 8,
+      "tags": [
+        "ent_balance"
+      ],
+      "keys": [
+        "ent_balance"
+      ],
+      "active": true
+    }
+  ],
+  "mappings": [
+    {
+      "answerStableId": "Q1_A1",
+      "questionStableId": "Q1",
+      "moduleStableId": "M01",
+      "weight": 3
+    },
+    {
+      "answerStableId": "Q1_A1",
+      "questionStableId": "Q1",
+      "moduleStableId": "M03",
+      "weight": 2
+    },
+    {
+      "answerStableId": "Q1_A2",
+      "questionStableId": "Q1",
+      "moduleStableId": "M02",
+      "weight": 3
+    },
+    {
+      "answerStableId": "Q1_A2",
+      "questionStableId": "Q1",
+      "moduleStableId": "M01",
+      "weight": 1
+    },
+    {
+      "answerStableId": "Q1_A2",
+      "questionStableId": "Q1",
+      "moduleStableId": "M05",
+      "weight": 1
+    },
+    {
+      "answerStableId": "Q1_A3",
+      "questionStableId": "Q1",
+      "moduleStableId": "M02",
+      "weight": 3
+    },
+    {
+      "answerStableId": "Q1_A3",
+      "questionStableId": "Q1",
+      "moduleStableId": "M05",
+      "weight": 2
+    },
+    {
+      "answerStableId": "Q1_A3",
+      "questionStableId": "Q1",
+      "moduleStableId": "M08",
+      "weight": 1
+    },
+    {
+      "answerStableId": "Q1_A4",
+      "questionStableId": "Q1",
+      "moduleStableId": "M06",
+      "weight": 3
+    },
+    {
+      "answerStableId": "Q1_A4",
+      "questionStableId": "Q1",
+      "moduleStableId": "M07",
+      "weight": 2
+    },
+    {
+      "answerStableId": "Q1_A5",
+      "questionStableId": "Q1",
+      "moduleStableId": "M09",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q1_A6",
+      "questionStableId": "Q1",
+      "moduleStableId": "M10",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q1_A6",
+      "questionStableId": "Q1",
+      "moduleStableId": "M04",
+      "weight": 1
+    },
+    {
+      "answerStableId": "Q1_A7",
+      "questionStableId": "Q1",
+      "moduleStableId": "M11",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q1_A7",
+      "questionStableId": "Q1",
+      "moduleStableId": "M10",
+      "weight": 1
+    },
+    {
+      "answerStableId": "Q2_A1",
+      "questionStableId": "Q2",
+      "moduleStableId": "M01",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q2_A1",
+      "questionStableId": "Q2",
+      "moduleStableId": "M02",
+      "weight": 2
+    },
+    {
+      "answerStableId": "Q2_A2",
+      "questionStableId": "Q2",
+      "moduleStableId": "M01",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A2",
+      "questionStableId": "Q2",
+      "moduleStableId": "M04",
+      "weight": 2
+    },
+    {
+      "answerStableId": "Q2_A3",
+      "questionStableId": "Q2",
+      "moduleStableId": "M02",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A4",
+      "questionStableId": "Q2",
+      "moduleStableId": "M03",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A5",
+      "questionStableId": "Q2",
+      "moduleStableId": "M04",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A6",
+      "questionStableId": "Q2",
+      "moduleStableId": "M04",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A7",
+      "questionStableId": "Q2",
+      "moduleStableId": "M05",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A8",
+      "questionStableId": "Q2",
+      "moduleStableId": "M05",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A8",
+      "questionStableId": "Q2",
+      "moduleStableId": "M02",
+      "weight": 2
+    },
+    {
+      "answerStableId": "Q2_A9",
+      "questionStableId": "Q2",
+      "moduleStableId": "M06",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A10",
+      "questionStableId": "Q2",
+      "moduleStableId": "M07",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A11",
+      "questionStableId": "Q2",
+      "moduleStableId": "M08",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A12",
+      "questionStableId": "Q2",
+      "moduleStableId": "M08",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A13",
+      "questionStableId": "Q2",
+      "moduleStableId": "M09",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A14",
+      "questionStableId": "Q2",
+      "moduleStableId": "M11",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q2_A15",
+      "questionStableId": "Q2",
+      "moduleStableId": "M11",
+      "weight": 5
+    },
+    {
+      "answerStableId": "Q3_A1",
+      "questionStableId": "Q3",
+      "moduleStableId": "M01",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q3_A2",
+      "questionStableId": "Q3",
+      "moduleStableId": "M02",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q3_A3",
+      "questionStableId": "Q3",
+      "moduleStableId": "M03",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q3_A4",
+      "questionStableId": "Q3",
+      "moduleStableId": "M04",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q3_A5",
+      "questionStableId": "Q3",
+      "moduleStableId": "M05",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q3_A6",
+      "questionStableId": "Q3",
+      "moduleStableId": "M05",
+      "weight": 3
+    },
+    {
+      "answerStableId": "Q3_A7",
+      "questionStableId": "Q3",
+      "moduleStableId": "M06",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q3_A8",
+      "questionStableId": "Q3",
+      "moduleStableId": "M07",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q3_A9",
+      "questionStableId": "Q3",
+      "moduleStableId": "M08",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q3_A10",
+      "questionStableId": "Q3",
+      "moduleStableId": "M09",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q3_A11",
+      "questionStableId": "Q3",
+      "moduleStableId": "M10",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q3_A12",
+      "questionStableId": "Q3",
+      "moduleStableId": "M11",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q5_A1",
+      "questionStableId": "Q5",
+      "moduleStableId": "M02",
+      "weight": 1
+    },
+    {
+      "answerStableId": "Q5_A2",
+      "questionStableId": "Q5",
+      "moduleStableId": "M03",
+      "weight": 2
+    },
+    {
+      "answerStableId": "Q5_A2",
+      "questionStableId": "Q5",
+      "moduleStableId": "M02",
+      "weight": 1
+    },
+    {
+      "answerStableId": "Q5_A3",
+      "questionStableId": "Q5",
+      "moduleStableId": "M03",
+      "weight": 1
+    },
+    {
+      "answerStableId": "Q5_A3",
+      "questionStableId": "Q5",
+      "moduleStableId": "M10",
+      "weight": 1
+    },
+    {
+      "answerStableId": "Q5_A4",
+      "questionStableId": "Q5",
+      "moduleStableId": "M11",
+      "weight": 4
+    },
+    {
+      "answerStableId": "Q5_A5",
+      "questionStableId": "Q5",
+      "moduleStableId": "M01",
+      "weight": 2
+    }
+  ],
+  "modules": [
+    {
+      "stableId": "M01",
+      "name": "Выбор направления",
+      "goal": "Сформировать 2–3 реалистичные карьерные гипотезы и понять, что проверять дальше.",
+      "steps": [
+        "Сравнить 10–15 вакансий по 2–3 интересующим ролям.",
+        "Выписать повторяющиеся задачи и требования.",
+        "Выбрать 1 основную и 1 запасную карьерную гипотезу."
+      ],
+      "checkpoint": "Есть 1–2 роли, по которым студент может объяснить: что делает специалист, что уже подходит и чего пока не хватает.",
+      "recommendationStableIds": [
+        "CKO_CONSULT",
+        "EVENT",
+        "FACULTY",
+        "CLUB",
+        "GEN_MARKET_SCAN"
+      ],
+      "constraints": "Если Q4_A1 выбран: не «выбрать с нуля», а проверить выбранную роль на реальных вакансиях.",
+      "active": true
+    },
+    {
+      "stableId": "M02",
+      "name": "Поиск возможностей",
+      "goal": "Сделать поиск системным: где искать, что считать подходящей возможностью и как не терять вакансии.",
+      "steps": [
+        "Задать фильтры: роль, уровень, формат, локация.",
+        "Собрать список целевых компаний и каналов поиска.",
+        "Вести простой трекер откликов и раз в неделю смотреть конверсию."
+      ],
+      "checkpoint": "Есть понятный список каналов, 15–20 целевых компаний/вакансий и ритм поиска.",
+      "recommendationStableIds": [
+        "CKO_DIGEST",
+        "CKO_INTERNSHIPS",
+        "EVENT",
+        "FACULTY",
+        "GEN_SEARCH_TRACKER"
+      ],
+      "constraints": "Если Q4_A5 выбран: не собирать список заново, а проверить его качество и расширить каналы.",
+      "active": true
+    },
+    {
+      "stableId": "M03",
+      "name": "Первый опыт",
+      "goal": "Получить или лучше упаковать опыт, который можно показать работодателю.",
+      "steps": [
+        "Перевести учебные и проектные задачи в формат опыта: задача → действие → результат.",
+        "Найти практику, стажировку, проект или роль в сообществе, где появится реальный результат.",
+        "Собрать 1–3 доказательства: кейс, репозиторий, презентация, метрика, отзыв."
+      ],
+      "checkpoint": "В резюме и на собеседовании есть минимум один конкретный кейс, а не только список дисциплин.",
+      "recommendationStableIds": [
+        "CKO_PRACTICE",
+        "CKO_INTERNSHIPS",
+        "CLUB",
+        "FACULTY",
+        "EVENT",
+        "GEN_EVIDENCE"
+      ],
+      "constraints": "Если Q4_A3/Q4_A4 выбран: акцент на упаковку существующего опыта и на более сильный следующий кейс.",
+      "active": true
+    },
+    {
+      "stableId": "M04",
+      "name": "Навыки и требования рынка",
+      "goal": "Понять разрыв между текущим профилем и требованиями к выбранной роли.",
+      "steps": [
+        "Разобрать 15–20 вакансий и выписать повторяющиеся навыки.",
+        "Разделить требования на must-have и nice-to-have.",
+        "Выбрать 1–2 навыка, которые можно усилить и подтвердить за ближайший месяц."
+      ],
+      "checkpoint": "Есть короткая карта навыков: уже есть / нужно подтянуть / чем подтвердить.",
+      "recommendationStableIds": [
+        "CKO_CONSULT",
+        "EVENT",
+        "FACULTY",
+        "CLUB",
+        "GEN_SKILL_GAP"
+      ],
+      "constraints": "Не превращать результат в длинный список курсов: в траектории должно быть не больше 2 приоритетных навыков.",
+      "active": true
+    },
+    {
+      "stableId": "M05",
+      "name": "Резюме и отклик",
+      "goal": "Повысить шанс дойти от отклика до разговора с работодателем.",
+      "steps": [
+        "Сделать резюме под целевую роль: релевантный опыт выше, лишнее убрать.",
+        "Описать проекты через конкретные действия и результат.",
+        "Адаптировать резюме и короткий отклик под вакансию; использовать понятные формулировки и термины из описания роли."
+      ],
+      "checkpoint": "Есть одно базовое резюме и понятный способ быстро адаптировать его под конкретную вакансию.",
+      "recommendationStableIds": [
+        "CKO_RESUME",
+        "CKO_CONSULT",
+        "EVENT",
+        "GEN_RESUME_AUDIT"
+      ],
+      "constraints": "Для Q2_A8 добавить вариант «первичный фильтр»: проверить читаемость, релевантность, ключевые требования и конверсию откликов. Не обещать «обход ATS».",
+      "active": true
+    },
+    {
+      "stableId": "M06",
+      "name": "Собеседование",
+      "goal": "Подготовить понятный рассказ о себе и доказательства компетенций.",
+      "steps": [
+        "Собрать самопрезентацию на 60–90 секунд.",
+        "Подготовить 6–8 историй по схеме ситуация → действие → результат.",
+        "Провести минимум одно тренировочное собеседование и разобрать слабые ответы."
+      ],
+      "checkpoint": "Студент может уверенно объяснить свой опыт, мотивацию и привести примеры по ключевым компетенциям.",
+      "recommendationStableIds": [
+        "CKO_CONSULT",
+        "EVENT",
+        "GEN_MOCK_INTERVIEW"
+      ],
+      "constraints": "Подстраивать примеры под выбранную роль; не выдавать универсальный список «правильных ответов».",
+      "active": true
+    },
+    {
+      "stableId": "M07",
+      "name": "Тестовые задания",
+      "goal": "Сделать выполнение тестовых более предсказуемым и понятным работодателю.",
+      "steps": [
+        "До начала зафиксировать требования, ограничения и критерии готовности.",
+        "Структурировать решение: логика, допущения, результат, краткое пояснение.",
+        "После выполнения сохранять сильные решения как кейсы и разбирать обратную связь."
+      ],
+      "checkpoint": "Есть повторяемый шаблон выполнения тестового и 1–2 сохранённых примера.",
+      "recommendationStableIds": [
+        "EVENT",
+        "CLUB",
+        "FACULTY",
+        "GEN_TEST_FRAMEWORK"
+      ],
+      "constraints": "Для технических направлений можно подставлять факультетские/клубные практики; конкретику подключать позже из каталога.",
+      "active": true
+    },
+    {
+      "stableId": "M08",
+      "name": "Устойчивый поиск",
+      "goal": "Выстроить ритм поиска, который можно совмещать с учёбой и не оценивать себя по каждому отказу.",
+      "steps": [
+        "Выделить 2–3 фиксированных окна в неделю на поиск и отклики.",
+        "Считать воронку: отклики → ответы → интервью → следующие этапы.",
+        "Если конверсия низкая, менять один элемент за раз: вакансии, резюме, канал или подготовку."
+      ],
+      "checkpoint": "Есть недельный ритм и цифры воронки, по которым понятно, что именно нужно улучшать.",
+      "recommendationStableIds": [
+        "CKO_DIGEST",
+        "CKO_CONSULT",
+        "EVENT",
+        "FACULTY",
+        "GEN_SEARCH_RHYTHM"
+      ],
+      "constraints": "Фокус на управляемых действиях и воронке. Не давать психологических диагнозов или обещаний.",
+      "active": true
+    },
+    {
+      "stableId": "M09",
+      "name": "Выбор стажировки или оффера",
+      "goal": "Сравнить варианты не только по названию компании или зарплате, а по содержанию и перспективе.",
+      "steps": [
+        "Определить 3 обязательных критерия и 3 допустимых компромисса.",
+        "Сравнить задачи, команду, наставника, формат, развитие и условия.",
+        "До решения задать работодателю вопросы по реальной работе и ожиданиям первых месяцев."
+      ],
+      "checkpoint": "Есть простая матрица сравнения и аргументированный выбор.",
+      "recommendationStableIds": [
+        "CKO_CONSULT",
+        "EVENT",
+        "GEN_OFFER_MATRIX"
+      ],
+      "constraints": "Если вариантов пока нет, модуль не должен попадать в топ только из-за общего интереса к стажировкам.",
+      "active": true
+    },
+    {
+      "stableId": "M10",
+      "name": "Развитие во время учёбы",
+      "goal": "Связать учёбу, проекты и работу в одну траекторию на ближайший семестр.",
+      "steps": [
+        "Выбрать карьерную цель на 6–12 месяцев.",
+        "Выбрать один проект/роль, где можно увеличить ответственность.",
+        "Раз в 2–3 месяца фиксировать новые результаты и обновлять резюме/портфолио."
+      ],
+      "checkpoint": "Есть цель на семестр и один проект, который должен дать новый уровень опыта.",
+      "recommendationStableIds": [
+        "CLUB",
+        "FACULTY",
+        "EVENT",
+        "CKO_CONSULT",
+        "GEN_SEMESTER_PLAN"
+      ],
+      "constraints": "Подходит и тем, кто уже работает: акцент на качестве опыта и следующем уровне задач.",
+      "active": true
+    },
+    {
+      "stableId": "M11",
+      "name": "Предпринимательство",
+      "goal": "Перевести интерес или идею в проверяемую гипотезу и определить следующий доказуемый шаг.",
+      "steps": [
+        "Сформулировать, для кого и какую проблему вы хотите решать; если идеи нет — выбрать 2–3 знакомые проблемные области.",
+        "Проверить гипотезу на реальных людях: короткие интервью и/или простой тест спроса без долгой разработки.",
+        "Зафиксировать факты и выбрать следующий эксперимент: прототип, пилот, первые продажи, изменение гипотезы или отказ от неё."
+      ],
+      "checkpoint": "Есть не только идея, а сформулированная гипотеза, факты от потенциальных пользователей и понятный следующий эксперимент.",
+      "recommendationStableIds": [
+        "EVENT",
+        "CLUB",
+        "FACULTY",
+        "GEN_ENT_CUSTOMER",
+        "GEN_ENT_EXPERIMENT",
+        "GEN_ENT_MODEL"
+      ],
+      "constraints": "Не начинать с регистрации бизнеса, большого бизнес-плана или поиска инвестиций. Сначала проблема, пользователь и спрос. Для действующего проекта использовать подветку по стадии из листа 09.",
+      "active": true
+    }
+  ],
+  "modifiers": [
+    {
+      "stableId": "MOD01",
+      "triggerAnswerPattern": "Q4_A1",
+      "triggerTag": null,
+      "targetModuleStableId": "M01",
+      "type": "COPY",
+      "variantKey": "validate_direction",
+      "effect": {
+        "kind": "copy",
+        "description": "Вместо «выберите направление» → «проверьте выбранную роль на реальных вакансиях»."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD02",
+      "triggerAnswerPattern": "Q4_A2",
+      "triggerTag": null,
+      "targetModuleStableId": "M05",
+      "type": "COPY",
+      "variantKey": "resume_audit",
+      "effect": {
+        "kind": "copy",
+        "description": "Вместо «создайте резюме» → «проведите аудит и адаптацию актуального резюме»."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD03",
+      "triggerAnswerPattern": "Q4_A3",
+      "triggerTag": null,
+      "targetModuleStableId": "M03",
+      "type": "COPY",
+      "variantKey": "evidence_exists",
+      "effect": {
+        "kind": "copy",
+        "description": "Вместо «создайте первый кейс» → «усильте и упакуйте существующие кейсы»."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD04",
+      "triggerAnswerPattern": "Q4_A4",
+      "triggerTag": null,
+      "targetModuleStableId": "M03",
+      "type": "COPY",
+      "variantKey": "package_experience",
+      "effect": {
+        "kind": "copy",
+        "description": "Вместо «получите любой опыт» → «упакуйте текущий опыт и найдите следующий более сильный кейс»."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD05",
+      "triggerAnswerPattern": "Q4_A5",
+      "triggerTag": null,
+      "targetModuleStableId": "M02",
+      "type": "COPY",
+      "variantKey": "search_list_exists",
+      "effect": {
+        "kind": "copy",
+        "description": "Вместо «соберите список компаний» → «расширьте каналы и проверьте качество текущего списка»."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD06",
+      "triggerAnswerPattern": "Q2_A8",
+      "triggerTag": null,
+      "targetModuleStableId": "M05",
+      "type": "COPY",
+      "variantKey": "ats_variant",
+      "effect": {
+        "kind": "copy",
+        "description": "Добавить блок про первичный фильтр: простая структура, релевантные термины, адаптация под вакансию, контроль конверсии."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD07",
+      "triggerAnswerPattern": "Q4_A6",
+      "triggerTag": null,
+      "targetModuleStableId": "M11",
+      "type": "COPY",
+      "variantKey": "idea_exists",
+      "effect": {
+        "kind": "copy",
+        "description": "Не искать идею с нуля: перейти к формулировке аудитории, проблемы и проверке спроса."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD08",
+      "triggerAnswerPattern": "Q4_A7",
+      "triggerTag": null,
+      "targetModuleStableId": "M11",
+      "type": "COPY",
+      "variantKey": "traction_exists",
+      "effect": {
+        "kind": "copy",
+        "description": "Не предлагать «первую проверку»: перейти к обратной связи пользователей, повторяемости спроса и бизнес-модели."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD09",
+      "triggerAnswerPattern": "Q6_*",
+      "triggerTag": null,
+      "targetModuleStableId": "ALL",
+      "type": "COPY",
+      "variantKey": "priorities",
+      "effect": {
+        "kind": "copy",
+        "description": "Вывести 1–3 выбранных ориентира отдельной строкой «Для вас важно»; не менять скоринг."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD10",
+      "triggerAnswerPattern": "Q7_*",
+      "triggerTag": null,
+      "targetModuleStableId": "ALL",
+      "type": "PACE",
+      "variantKey": "pace",
+      "effect": {
+        "kind": "pace",
+        "description": "Изменить интенсивность и частоту действий по правилам R10."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD11",
+      "triggerAnswerPattern": "Q9_*",
+      "triggerTag": null,
+      "targetModuleStableId": "M11",
+      "type": "COPY",
+      "variantKey": "ent_stage",
+      "effect": {
+        "kind": "copy",
+        "description": "Выбрать стадийный вариант из листа «09_Предпринимательство»."
+      },
+      "active": true
+    },
+    {
+      "stableId": "MOD12",
+      "triggerAnswerPattern": "Q10_*",
+      "triggerTag": null,
+      "targetModuleStableId": "M11",
+      "type": "COPY",
+      "variantKey": "ent_challenge",
+      "effect": {
+        "kind": "copy",
+        "description": "Добавить 1–2 действия по выбранным задачам из листа «09_Предпринимательство»."
+      },
+      "active": true
+    }
+  ],
+  "recommendations": [
+    {
+      "stableId": "CKO_CONSULT",
+      "type": "CKO_SERVICE",
+      "title": "Карьерная консультация",
+      "description": "Подключать, когда нужен выбор направления, разбор ситуации, подготовка к собеседованию или выбор между вариантами.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "CKO_RESUME",
+      "type": "CKO_SERVICE",
+      "title": "«Резюме от ИТМО»",
+      "description": "Подключать к ветке резюме и откликов.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "CKO_PRACTICE",
+      "type": "CKO_SERVICE",
+      "title": "База практик",
+      "description": "Подключать к веткам первого опыта и практической подготовки.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "CKO_DIGEST",
+      "type": "CKO_SERVICE",
+      "title": "Рассылки, дайджесты и карьерные подборки",
+      "description": "Подключать к поиску возможностей и поддержанию регулярного поиска.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "CKO_INTERNSHIPS",
+      "type": "CKO_SERVICE",
+      "title": "Стажировки от партнёров университета",
+      "description": "Подключать к поиску и первому опыту.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "EVENT",
+      "type": "EVENT",
+      "title": "Мероприятия",
+      "description": "Категория-слот. Конкретные мероприятия подставлять из актуального каталога по теме/дате.",
+      "url": null,
+      "status": "SLOT",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "CLUB",
+      "type": "CLUB",
+      "title": "Клубы",
+      "description": "Категория-слот. Конкретные клубы можно привязать к профессиональному направлению или предпринимательскому интересу.",
+      "url": null,
+      "status": "SLOT",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "FACULTY",
+      "type": "FACULTY",
+      "title": "Факультетские активности",
+      "description": "Категория-слот. Конкретные активности подставлять по факультету/мегафакультету.",
+      "url": null,
+      "status": "SLOT",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_MARKET_SCAN",
+      "type": "GENERAL",
+      "title": "Сверка с рынком",
+      "description": "Собрать 10–15 вакансий по роли и выписать повторяющиеся задачи и требования.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_SEARCH_TRACKER",
+      "type": "GENERAL",
+      "title": "Трекер поиска",
+      "description": "Вести вакансии, даты откликов и этапы в одной таблице; раз в неделю смотреть конверсию.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_EVIDENCE",
+      "type": "GENERAL",
+      "title": "Портфолио доказательств",
+      "description": "Для каждого сильного навыка иметь пример: проект, кейс, репозиторий, презентацию или измеримый результат.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_SKILL_GAP",
+      "type": "GENERAL",
+      "title": "Карта дефицита навыков",
+      "description": "Разделить навыки на «есть», «нужно подтянуть», «чем подтвердить» и выбрать не больше двух приоритетов.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_RESUME_AUDIT",
+      "type": "GENERAL",
+      "title": "Аудит резюме под вакансию",
+      "description": "Проверить релевантность, порядок блоков, конкретику достижений и соответствие требованиям роли.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_MOCK_INTERVIEW",
+      "type": "GENERAL",
+      "title": "Тренировочное собеседование",
+      "description": "Провести пробное интервью и зафиксировать 3 ответа, которые нужно улучшить.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_TEST_FRAMEWORK",
+      "type": "GENERAL",
+      "title": "Шаблон тестового задания",
+      "description": "Фиксировать задачу, допущения, ход решения, результат и короткое пояснение для проверяющего.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_SEARCH_RHYTHM",
+      "type": "GENERAL",
+      "title": "Недельный ритм поиска",
+      "description": "Задать фиксированные окна на поиск, отклики и подготовку; оценивать прогресс по воронке, а не по одному отказу.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_OFFER_MATRIX",
+      "type": "GENERAL",
+      "title": "Матрица выбора",
+      "description": "Сравнить варианты по задачам, команде, наставнику, развитию, формату и условиям.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_SEMESTER_PLAN",
+      "type": "GENERAL",
+      "title": "План на семестр",
+      "description": "Выбрать одну карьерную цель и один проект, который должен дать новый уровень ответственности или результата.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_ENT_CUSTOMER",
+      "type": "GENERAL",
+      "title": "Интервью с потенциальными пользователями",
+      "description": "Поговорить с 5–10 людьми из предполагаемой аудитории о проблеме и текущем способе её решения; не продавать идею во время интервью.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_ENT_EXPERIMENT",
+      "type": "GENERAL",
+      "title": "Минимальный тест спроса",
+      "description": "Проверить одну ключевую гипотезу самым дешёвым способом: прототип, форма интереса, пилот, предзаказ или другой измеримый тест.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_ENT_MODEL",
+      "type": "GENERAL",
+      "title": "Черновик бизнес-модели",
+      "description": "Зафиксировать: кто пользователь, кто платит, какую ценность получает, как приходит в продукт, основные затраты и ключевая метрика.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    },
+    {
+      "stableId": "GEN_ENT_TEAM",
+      "type": "GENERAL",
+      "title": "Карта команды",
+      "description": "Определить, какие компетенции критичны для следующего эксперимента и что можно закрыть самому, партнёром или точечной помощью.",
+      "url": null,
+      "status": "ACTIVE",
+      "tags": [],
+      "active": true
+    }
+  ],
+  "moduleRecommendations": [
+    {
+      "moduleStableId": "M01",
+      "recommendationStableId": "CKO_CONSULT",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M01",
+      "recommendationStableId": "EVENT",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M01",
+      "recommendationStableId": "FACULTY",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M01",
+      "recommendationStableId": "CLUB",
+      "priority": 4
+    },
+    {
+      "moduleStableId": "M01",
+      "recommendationStableId": "GEN_MARKET_SCAN",
+      "priority": 5
+    },
+    {
+      "moduleStableId": "M02",
+      "recommendationStableId": "CKO_DIGEST",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M02",
+      "recommendationStableId": "CKO_INTERNSHIPS",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M02",
+      "recommendationStableId": "EVENT",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M02",
+      "recommendationStableId": "FACULTY",
+      "priority": 4
+    },
+    {
+      "moduleStableId": "M02",
+      "recommendationStableId": "GEN_SEARCH_TRACKER",
+      "priority": 5
+    },
+    {
+      "moduleStableId": "M03",
+      "recommendationStableId": "CKO_PRACTICE",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M03",
+      "recommendationStableId": "CKO_INTERNSHIPS",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M03",
+      "recommendationStableId": "CLUB",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M03",
+      "recommendationStableId": "FACULTY",
+      "priority": 4
+    },
+    {
+      "moduleStableId": "M03",
+      "recommendationStableId": "EVENT",
+      "priority": 5
+    },
+    {
+      "moduleStableId": "M03",
+      "recommendationStableId": "GEN_EVIDENCE",
+      "priority": 6
+    },
+    {
+      "moduleStableId": "M04",
+      "recommendationStableId": "CKO_CONSULT",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M04",
+      "recommendationStableId": "EVENT",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M04",
+      "recommendationStableId": "FACULTY",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M04",
+      "recommendationStableId": "CLUB",
+      "priority": 4
+    },
+    {
+      "moduleStableId": "M04",
+      "recommendationStableId": "GEN_SKILL_GAP",
+      "priority": 5
+    },
+    {
+      "moduleStableId": "M05",
+      "recommendationStableId": "CKO_RESUME",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M05",
+      "recommendationStableId": "CKO_CONSULT",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M05",
+      "recommendationStableId": "EVENT",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M05",
+      "recommendationStableId": "GEN_RESUME_AUDIT",
+      "priority": 4
+    },
+    {
+      "moduleStableId": "M06",
+      "recommendationStableId": "CKO_CONSULT",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M06",
+      "recommendationStableId": "EVENT",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M06",
+      "recommendationStableId": "GEN_MOCK_INTERVIEW",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M07",
+      "recommendationStableId": "EVENT",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M07",
+      "recommendationStableId": "CLUB",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M07",
+      "recommendationStableId": "FACULTY",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M07",
+      "recommendationStableId": "GEN_TEST_FRAMEWORK",
+      "priority": 4
+    },
+    {
+      "moduleStableId": "M08",
+      "recommendationStableId": "CKO_DIGEST",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M08",
+      "recommendationStableId": "CKO_CONSULT",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M08",
+      "recommendationStableId": "EVENT",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M08",
+      "recommendationStableId": "FACULTY",
+      "priority": 4
+    },
+    {
+      "moduleStableId": "M08",
+      "recommendationStableId": "GEN_SEARCH_RHYTHM",
+      "priority": 5
+    },
+    {
+      "moduleStableId": "M09",
+      "recommendationStableId": "CKO_CONSULT",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M09",
+      "recommendationStableId": "EVENT",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M09",
+      "recommendationStableId": "GEN_OFFER_MATRIX",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M10",
+      "recommendationStableId": "CLUB",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M10",
+      "recommendationStableId": "FACULTY",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M10",
+      "recommendationStableId": "EVENT",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M10",
+      "recommendationStableId": "CKO_CONSULT",
+      "priority": 4
+    },
+    {
+      "moduleStableId": "M10",
+      "recommendationStableId": "GEN_SEMESTER_PLAN",
+      "priority": 5
+    },
+    {
+      "moduleStableId": "M11",
+      "recommendationStableId": "EVENT",
+      "priority": 1
+    },
+    {
+      "moduleStableId": "M11",
+      "recommendationStableId": "CLUB",
+      "priority": 2
+    },
+    {
+      "moduleStableId": "M11",
+      "recommendationStableId": "FACULTY",
+      "priority": 3
+    },
+    {
+      "moduleStableId": "M11",
+      "recommendationStableId": "GEN_ENT_CUSTOMER",
+      "priority": 4
+    },
+    {
+      "moduleStableId": "M11",
+      "recommendationStableId": "GEN_ENT_EXPERIMENT",
+      "priority": 5
+    },
+    {
+      "moduleStableId": "M11",
+      "recommendationStableId": "GEN_ENT_MODEL",
+      "priority": 6
+    }
+  ],
+  "entrepreneurStages": [
+    {
+      "stableId": "ent_stage_interest",
+      "answerStableId": "Q9_A1",
+      "targetModuleStableId": "M11",
+      "answerText": "Только интересуюсь: конкретной идеи пока нет",
+      "focus": "Найти проблему, а не «придумать стартап»",
+      "steps": [
+        "Выберите 2–3 области, которые хорошо знаете по учёбе, работе или личному опыту.",
+        "Проведите по 3–5 коротких разговоров с людьми из каждой области о регулярных проблемах.",
+        "Выберите одну проблему по частоте, остроте и доступности аудитории для дальнейшей проверки."
+      ],
+      "checkpoint": "Есть одна проблема и понятный сегмент людей, с которыми можно продолжить проверку.",
+      "sortOrder": 1,
+      "active": true
+    },
+    {
+      "stableId": "ent_stage_idea",
+      "answerStableId": "Q9_A2",
+      "targetModuleStableId": "M11",
+      "answerText": "Есть идея, но я её ещё не проверял(а)",
+      "focus": "Проверить проблему и спрос до разработки",
+      "steps": [
+        "Сформулируйте гипотезу: кто пользователь, какая у него проблема, что он делает сейчас.",
+        "Проведите 5–10 проблемных интервью и зафиксируйте повторяющиеся паттерны.",
+        "Сделайте один минимальный тест спроса без полноценной разработки."
+      ],
+      "checkpoint": "Есть факты, подтверждающие/опровергающие проблему и следующий эксперимент.",
+      "sortOrder": 2,
+      "active": true
+    },
+    {
+      "stableId": "ent_stage_validation",
+      "answerStableId": "Q9_A3",
+      "targetModuleStableId": "M11",
+      "answerText": "Проверяю спрос или делаю прототип",
+      "focus": "Получить измеримый сигнал от рынка",
+      "steps": [
+        "Определите одну главную гипотезу, которую должен проверить текущий прототип.",
+        "Выберите одну метрику: заявки, регистрации, пилоты, повторное использование или другой явный сигнал.",
+        "Проведите тест на небольшой аудитории и сравните результат с заранее заданным критерием."
+      ],
+      "checkpoint": "Есть измеримый результат теста и решение: продолжать, менять или останавливать гипотезу.",
+      "sortOrder": 3,
+      "active": true
+    },
+    {
+      "stableId": "ent_stage_users",
+      "answerStableId": "Q9_A4",
+      "targetModuleStableId": "M11",
+      "answerText": "Есть первые пользователи или клиенты",
+      "focus": "Понять, почему люди остаются и готовы ли платить",
+      "steps": [
+        "Соберите обратную связь у первых пользователей: зачем пришли, что используют, что мешает.",
+        "Проверьте повторное использование/повторную потребность и готовность платить.",
+        "Зафиксируйте один узкий сегмент и один канал привлечения для следующего цикла."
+      ],
+      "checkpoint": "Понятно, кто ваш наиболее перспективный пользователь и какой сигнал повторяемости вы проверяете.",
+      "sortOrder": 4,
+      "active": true
+    },
+    {
+      "stableId": "ent_stage_revenue",
+      "answerStableId": "Q9_A5",
+      "targetModuleStableId": "M11",
+      "answerText": "Есть продажи / действующий проект",
+      "focus": "Проверить повторяемость модели, а не только факт первой продажи",
+      "steps": [
+        "Разберите, откуда приходят клиенты и какие сделки/пользователи наиболее качественные.",
+        "Посчитайте базовую экономику на уровне одной продажи или клиента.",
+        "Выберите одно ограничение роста: спрос, канал, продукт, команда или экономика — и поставьте эксперимент."
+      ],
+      "checkpoint": "Есть базовая экономика и один приоритетный эксперимент на повышение повторяемости.",
+      "sortOrder": 5,
+      "active": true
+    }
+  ],
+  "entrepreneurChallenges": [
+    {
+      "stableId": "ent_problem",
+      "answerStableId": "Q10_A1",
+      "targetModuleStableId": "M11",
+      "answerText": "Найти идею или проблему, которую стоит решать",
+      "trajectoryAdjustment": "Не генерировать идеи в вакууме: собрать проблемы из знакомых контекстов и проверить их частоту.",
+      "recommendationStableId": "GEN_ENT_CUSTOMER",
+      "sortOrder": 1,
+      "active": true
+    },
+    {
+      "stableId": "ent_customer",
+      "answerStableId": "Q10_A2",
+      "targetModuleStableId": "M11",
+      "answerText": "Понять, кто моя аудитория и что ей действительно нужно",
+      "trajectoryAdjustment": "Сузить сегмент и провести интервью о реальном поведении, а не о гипотетическом интересе.",
+      "recommendationStableId": "GEN_ENT_CUSTOMER",
+      "sortOrder": 2,
+      "active": true
+    },
+    {
+      "stableId": "ent_demand",
+      "answerStableId": "Q10_A3",
+      "targetModuleStableId": "M11",
+      "answerText": "Проверить, есть ли реальный спрос",
+      "trajectoryAdjustment": "Сделать минимальный тест с измеримым действием пользователя: заявка, пилот, предзаказ, регистрация.",
+      "recommendationStableId": "GEN_ENT_EXPERIMENT",
+      "sortOrder": 3,
+      "active": true
+    },
+    {
+      "stableId": "ent_mvp",
+      "answerStableId": "Q10_A4",
+      "targetModuleStableId": "M11",
+      "answerText": "Сделать первый прототип / MVP",
+      "trajectoryAdjustment": "Собрать только то, что нужно для проверки одной ключевой гипотезы; не делать «полный продукт».",
+      "recommendationStableId": "GEN_ENT_EXPERIMENT",
+      "sortOrder": 4,
+      "active": true
+    },
+    {
+      "stableId": "ent_team",
+      "answerStableId": "Q10_A5",
+      "targetModuleStableId": "M11",
+      "answerText": "Найти команду или недостающие компетенции",
+      "trajectoryAdjustment": "Сначала описать конкретную недостающую роль и ближайшую задачу; искать человека под эксперимент, а не абстрактного сооснователя.",
+      "recommendationStableId": "GEN_ENT_TEAM",
+      "sortOrder": 5,
+      "active": true
+    },
+    {
+      "stableId": "ent_sales",
+      "answerStableId": "Q10_A6",
+      "targetModuleStableId": "M11",
+      "answerText": "Найти первых пользователей / клиентов",
+      "trajectoryAdjustment": "Выбрать один узкий сегмент и один доступный канал; провести серию персональных касаний вместо широкого продвижения.",
+      "recommendationStableId": "GEN_ENT_EXPERIMENT",
+      "sortOrder": 6,
+      "active": true
+    },
+    {
+      "stableId": "ent_model",
+      "answerStableId": "Q10_A7",
+      "targetModuleStableId": "M11",
+      "answerText": "Понять бизнес-модель и экономику проекта",
+      "trajectoryAdjustment": "Зафиксировать, кто платит, за что, сколько стоит привлечение/оказание услуги и какая метрика показывает жизнеспособность.",
+      "recommendationStableId": "GEN_ENT_MODEL",
+      "sortOrder": 7,
+      "active": true
+    },
+    {
+      "stableId": "ent_balance",
+      "answerStableId": "Q10_A8",
+      "targetModuleStableId": "M11",
+      "answerText": "Совмещать проект с учёбой и другими задачами",
+      "trajectoryAdjustment": "Работать недельными экспериментами с одной гипотезой и заранее ограниченным временем.",
+      "recommendationStableId": "GEN_ENT_EXPERIMENT",
+      "sortOrder": 8,
+      "active": true
+    }
+  ],
+  "rules": [
+    {
+      "id": "R01",
+      "title": "Скоринг",
+      "content": "Каждый выбранный ответ со значением в «Маппинг/вес» добавляет вес связанным модулям по таблице «02_Маппинг»."
+    },
+    {
+      "id": "R02",
+      "title": "Главный сигнал",
+      "content": "Ответы Q2 (сложности) важнее остальных при равном итоговом балле."
+    },
+    {
+      "id": "R03",
+      "title": "Второй приоритет",
+      "content": "При равенстве после Q2 приоритет получает модуль, поддержанный Q3 (цель), затем Q1 (этап), затем Q5 (формат)."
+    },
+    {
+      "id": "R04",
+      "title": "Количество модулей",
+      "content": "В PDF выводить 1 основной модуль + максимум 2 поддерживающих."
+    },
+    {
+      "id": "R05",
+      "title": "Минимум веса",
+      "content": "Поддерживающий модуль выводить только при суммарном весе ≥4. Если таких нет, оставить 1–2 модуля."
+    },
+    {
+      "id": "R06",
+      "title": "Модификаторы",
+      "content": "Q4, Q6, Q7, Q8, Q9 и Q10 в основном меняют текст, темп и рекомендации, а не основную ветку."
+    },
+    {
+      "id": "R07",
+      "title": "Рекомендации",
+      "content": "Выбирать до 3 карточек: релевантный сервис ЦКО, слот экосистемы ИТМО и общая рекомендация. Если для модуля нет релевантного сервиса ЦКО, не добавлять его искусственно."
+    },
+    {
+      "id": "R08",
+      "title": "Формат поддержки",
+      "content": "Q8 меняет порядок карточек по предпочтению пользователя, но не карьерные приоритеты."
+    },
+    {
+      "id": "R09",
+      "title": "Ориентиры",
+      "content": "Q6 вывести в PDF как 1–3 коротких ориентира и использовать как дополнительный фильтр при выборе рекомендаций."
+    },
+    {
+      "id": "R10",
+      "title": "Темп",
+      "content": "Q7 меняет объём действий: light — 1 небольшой шаг/нед.; normal — 2–3; active — 3–4; intensive — можно добавлять параллельный эксперимент."
+    },
+    {
+      "id": "R11",
+      "title": "Дедупликация",
+      "content": "Одинаковая рекомендация не должна повторяться в разных модулях одного PDF."
+    },
+    {
+      "id": "R12",
+      "title": "ATS",
+      "content": "Не обещать «обход» автоматических фильтров. Формулировать как повышение релевантности и читаемости отклика + контроль конверсии."
+    },
+    {
+      "id": "R13",
+      "title": "Офферы",
+      "content": "M09 не выводить как основной без явного сигнала Q1_A5, Q2_A13 или Q3_A10."
+    },
+    {
+      "id": "R14",
+      "title": "Предпринимательство",
+      "content": "M11 не выводить как основной без entrepreneur_signal: Q1_A7, Q2_A14/Q2_A15, Q3_A12, Q4_A6/Q4_A7 или Q5_A4."
+    },
+    {
+      "id": "R15",
+      "title": "Условная ветка",
+      "content": "Если entrepreneur_signal = true, показать Q9 и Q10. Иначе эти вопросы не показывать."
+    },
+    {
+      "id": "R16",
+      "title": "Предпринимательская подветка",
+      "content": "Для M11 базовые шаги из «03_Модули» заменяются/уточняются контентом из «09_Предпринимательство» по Q9 и Q10."
+    },
+    {
+      "id": "R17",
+      "title": "Фолбэк",
+      "content": "Если ни один модуль не набрал 4 балла: M01 для не начавших поиск, M02 для ищущих, M10 для уже работающих; при entrepreneur_signal — M11."
+    }
+  ],
+  "examples": [
+    {
+      "stableId": "E01",
+      "selectedAnswers": "Ещё не искал; не понимаю, куда двигаться; не хватает опыта; хочу выбрать направление",
+      "resultingModules": "M01 → M03 → M04",
+      "primaryFocus": "Выбор направления",
+      "stepsSummary": "Сравнить роли → выбрать гипотезу → собрать первый доказуемый кейс.",
+      "recommendationsSummary": "Карьерная консультация; Факультетские активности; Сверка с рынком"
+    },
+    {
+      "stableId": "E02",
+      "selectedAnswers": "Активно откликаюсь; сложно найти вакансии; почти нет приглашений; хочу найти работу",
+      "resultingModules": "M02 → M05 → M08",
+      "primaryFocus": "Поиск возможностей",
+      "stepsSummary": "Расширить каналы → адаптировать резюме → считать конверсию откликов.",
+      "recommendationsSummary": "Дайджесты и подборки; Мероприятия; Трекер поиска"
+    },
+    {
+      "stableId": "E03",
+      "selectedAnswers": "Прохожу отборы; сложно собеседование; сложно тестовое",
+      "resultingModules": "M06 → M07",
+      "primaryFocus": "Собеседование",
+      "stepsSummary": "Самопрезентация → 6–8 историй → мок-интервью; отдельно — шаблон тестового.",
+      "recommendationsSummary": "Карьерная консультация; Мероприятия; Тренировочное собеседование"
+    },
+    {
+      "stableId": "E04",
+      "selectedAnswers": "Есть актуальное резюме; откликаюсь, но не получаю приглашений",
+      "resultingModules": "M05 → M02",
+      "primaryFocus": "Резюме и отклик",
+      "stepsSummary": "Не создавать резюме заново: аудит релевантности → адаптация → проверка конверсии по каналам.",
+      "recommendationsSummary": "«Резюме от ИТМО»; Мероприятия; Аудит резюме под вакансию"
+    },
+    {
+      "stableId": "E05",
+      "selectedAnswers": "Уже работаю; хочу развиваться; не понимаю, какие навыки усиливать; важна сильная команда",
+      "resultingModules": "M10 → M04",
+      "primaryFocus": "Развитие во время учёбы",
+      "stepsSummary": "Цель на 6–12 месяцев → проект с большей ответственностью → два приоритетных навыка.",
+      "recommendationsSummary": "Клубы; Факультетские активности; План на семестр"
+    },
+    {
+      "stableId": "E06",
+      "selectedAnswers": "Хочу попробовать предпринимательство; идеи пока нет; важны самостоятельность и развитие; 2–3 часа в неделю",
+      "resultingModules": "M11 → M10",
+      "primaryFocus": "Предпринимательство",
+      "stepsSummary": "Выбрать 2–3 знакомые проблемные области → провести 5 интервью → выбрать одну гипотезу для теста.",
+      "recommendationsSummary": "Мероприятия; Клубы; Интервью с потенциальными пользователями"
+    },
+    {
+      "stableId": "E07",
+      "selectedAnswers": "Есть идея; проверяю спрос; сложно найти первых клиентов; 4–6 часов в неделю",
+      "resultingModules": "M11",
+      "primaryFocus": "Предпринимательство",
+      "stepsSummary": "Уточнить сегмент → провести тест спроса → получить первые измеримые сигналы и решить, что менять.",
+      "recommendationsSummary": "Мероприятия; Минимальный тест спроса; Черновик бизнес-модели"
+    }
+  ],
+  "editingInstructions": [
+    {
+      "id": "EDIT_01",
+      "title": "Изменить текст вопроса",
+      "content": "Поменять только текст. ID вопроса лучше не трогать. | 01_Анкета | Условия показа и answer_id остаются прежними."
+    },
+    {
+      "id": "EDIT_02",
+      "title": "Добавить вариант ответа без новой логики",
+      "content": "Добавить новый answer_id вида Q6_A8 и текст. Если это только персонализация — оставить скоринг пустым и задать ключ/тег. | 01_Анкета | Новый answer_id уникален; max_select вопроса остаётся логичным."
+    },
+    {
+      "id": "EDIT_03",
+      "title": "Добавить вариант, который влияет на траекторию",
+      "content": "Добавить ответ в 01_Анкета и отдельную строку на каждый модуль в 02_Маппинг. Вес обычно: 1–2 слабый сигнал, 3–4 средний, 5 сильный. | 01_Анкета + 02_Маппинг | Сумма весов не должна случайно делать второстепенный ответ сильнее основной сложности Q2."
+    },
+    {
+      "id": "EDIT_04",
+      "title": "Добавить новый карьерный модуль",
+      "content": "Создать новый Mxx в 03_Модули, затем привязать к нему ответы через 02_Маппинг и рекомендации через ID. | 03_Модули + 02_Маппинг + 04_Рекомендации | Добавить защитное правило, если модуль должен включаться только по явному сигналу."
+    },
+    {
+      "id": "EDIT_05",
+      "title": "Изменить шаги в готовой траектории",
+      "content": "Править цель, 3 шага и контрольную точку модуля. | 03_Модули | Сохранить 3 конкретных действия; не превращать результат в длинную памятку."
+    },
+    {
+      "id": "EDIT_06",
+      "title": "Добавить сервис ЦКО",
+      "content": "Создать recommendation_id, тип «Сервис ЦКО», название и условие использования. | 04_Рекомендации | Использовать только реально существующий сервис; затем добавить его ID нужным модулям."
+    },
+    {
+      "id": "EDIT_07",
+      "title": "Добавить мероприятие / клуб / факультетскую активность",
+      "content": "Базовую логику менять не нужно. EVENT / CLUB / FACULTY — это слоты. Конкретный каталог можно подключать отдельно. | 04_Рекомендации | У конкретной сущности должны быть минимум тип, название, тематика и актуальность/дата."
+    },
+    {
+      "id": "EDIT_08",
+      "title": "Добавить персонализацию без новой ветки",
+      "content": "Создать ответ без веса и добавить модификатор: что именно меняется в тексте, темпе или рекомендациях. | 01_Анкета + 05_Правила_сборки | Такой ответ не должен неожиданно менять основной модуль."
+    },
+    {
+      "id": "EDIT_09",
+      "title": "Добавить условный вопрос",
+      "content": "Добавить вопрос и заполнить «Условие показа». Источник условия — ключ/тег ответа, например entrepreneur_signal. | 01_Анкета | Если условие не сработало, вопрос не считается обязательным."
+    },
+    {
+      "id": "EDIT_10",
+      "title": "Изменить предпринимательскую ветку",
+      "content": "Стадии Q9 и задачи Q10 лучше менять в отдельной таблице, не создавая новый модуль для каждой стадии. | 09_Предпринимательство | M11 остаётся одним модулем; стадии только меняют контент внутри него."
+    }
+  ]
+}
