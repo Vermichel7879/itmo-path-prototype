@@ -2,7 +2,7 @@
 
 ## 1. Статус документа
 
-Документ обновлён по итогам PHASE 2. Frontend PHASE 1 и database foundation PHASE 2 реализованы; production rule engine, публикация через admin UI, auth и PDF остаются границами следующих фаз.
+Документ обновлён по итогам завершения PHASE 2.5. Frontend PHASE 1, database foundation PHASE 2 и typed rules configuration PHASE 2.5 реализованы; migration 0002 и typed seed применены и read-only проверены в Supabase. Production rule engine, публикация, admin UI, auth и PDF остаются границами следующих фаз.
 
 ## 2. Назначение и ограничения
 
@@ -57,8 +57,8 @@ src/
     db/                    # server-only connection, queries, transactions
     pdf/                   # renderer из TrajectoryResult
     validation/            # общие Zod schemas
-  test/
-    fixtures/              # импортированные regression examples E01–E07
+  lib/db/config/
+    __fixtures__/          # точные test-only сценарии T01–T31
 scripts/
   import-career-config.*   # read-only чтение source/xlsx и импорт только в draft
 supabase/
@@ -101,7 +101,21 @@ Checked-in `career-config-v2.json` содержит тот же валидиро
 
 Переход DRAFT → PUBLISHED будет выполняться транзакцией PHASE 4. После перехода PostgreSQL trigger запрещает update/delete строки опубликованной версии, а CHECK запрещает публиковать пустой snapshot. Редактирование draft поэтому не влияет на уже опубликованный результат.
 
-Реализованы 14 таблиц: `admin_users`, `admin_sessions`, `config_versions`, `questions`, `answers`, `answer_module_weights`, `modules`, `modifiers`, `recommendations`, `module_recommendations`, `opportunities`, `entrepreneur_stages`, `entrepreneur_challenges`, `audit_log`. Внешние ключи, cross-version composite FK, indexes, unique/check constraints и soft-disable `active` закреплены в migrations.
+В live Supabase реализованы 16 project tables: исходные 14 таблиц PHASE 2 и versioned `engine_rules`/`documentation_examples` из migration 0002. Также заполнены `modules.sort_order`, `recommendations.priority_tags` и типизированные modifier operation columns. Drizzle history содержит три migration records.
+
+`engine_rules` хранит `rule_kind`, проверяемые Zod `params`, исходные title/content и порядок. Только kind/params исполняемы; исходный текст нужен для аудита. E01–E07 хранятся в `documentation_examples` и не исполняются. Канонический snapshot builder собирает полную конфигурацию из нормализованного DRAFT и не допускает publish при неполных или невалидных typed rules.
+
+```text
+normalized DRAFT tables
+        ↓
+canonical snapshot builder + Zod validation
+        ↓
+typed immutable PUBLISHED snapshot
+        ↓
+server-side rule engine
+```
+
+Текущий live state содержит один typed DRAFT и ни одного PUBLISHED; сам publish workflow остаётся следующей фазой.
 
 ## 8. Rule engine
 
@@ -111,7 +125,7 @@ Checked-in `career-config-v2.json` содержит тот же валидиро
 calculateTrajectory(config: PublishedConfig, answerIds: AnswerId[]): TrajectoryResult
 ```
 
-Алгоритм суммирует веса, применяет Q2 → Q3 → Q1 → Q5 tie-break, ограничения M09/M11, support thresholds, fallback, modifiers Q4/Q6/Q7/Q8 и предпринимательские Q9/Q10. Выбор рекомендаций детерминирован, не содержит дублей и не раскрывает scores.
+Алгоритм будет исполнять только утверждённые R01–R17: суммировать веса, применять Q2 → Q3 → Q1 → Q5 → `module.sort_order ASC`, ограничения M09/M11, строгий support threshold 4, fallback, типизированные modifier operations Q4/Q6/Q7/Q8 и предпринимательские Q9/Q10. Выбор рекомендаций ограничен тремя позициями, использует soft diversity и детерминированную дедупликацию, не раскрывая scores.
 
 В debug preview вычислительная трассировка возвращается отдельным admin-only типом и никогда не входит в публичный DTO.
 
@@ -128,7 +142,8 @@ calculateTrajectory(config: PublishedConfig, answerIds: AnswerId[]): TrajectoryR
 
 - unit: rule engine, tie-break, thresholds, fallback, modifiers, deduplication;
 - questionnaire: branching после Q5, Q4/Q8 optional, max-select и обратный переход;
-- regression: примеры Excel E01–E07;
+- configuration: Zod validation всех R01–R17, modifier operations и canonical snapshot assembly;
+- regression: точные test-only сценарии T01–T31; E01–E07 остаются только документационными примерами без вымышленных answer IDs;
 - data: draft/published separation, publish transaction и rollback;
 - auth: login, logout, expiry, роли и защита mutations;
 - integration: public calculation и PDF используют один `TrajectoryResult`;

@@ -17,6 +17,7 @@
     "db:import:dry": "tsx scripts/import-career-config.ts --dry-run",
     "db:seed": "tsx scripts/seed-career-config.ts",
     "db:seed:generate": "tsx scripts/export-career-seed.ts",
+    "db:seed:rules:generate": "tsx scripts/export-typed-rule-sql.ts",
     "db:verify": "tsx scripts/verify-database-import.ts"
   },
   "dependencies": {

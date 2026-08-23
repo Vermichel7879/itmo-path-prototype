@@ -29,6 +29,8 @@ describe("career workbook parser", () => {
         modifiers: 12,
         entrepreneurStages: 5,
         entrepreneurChallenges: 8,
+        engineRules: 17,
+        documentationExamples: 7,
       });
       expect(config.entrepreneurStages.map((item) => item.answerStableId)).toEqual([
         "Q9_A1",
@@ -59,5 +61,8 @@ describe("career workbook parser", () => {
       "EFC16A1C08A5019C05962ADD9C6390FB03F9DE9A28AA56FE3495A7F1C76181F2",
     );
     expect(config.modules).toHaveLength(11);
+    expect(config.engineRules).toHaveLength(17);
+    expect(config.documentationExamples).toHaveLength(7);
+    expect(config.modifiers.every((modifier) => modifier.operation)).toBe(true);
   });
 });

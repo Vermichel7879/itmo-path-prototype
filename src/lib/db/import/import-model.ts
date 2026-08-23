@@ -1,5 +1,12 @@
 import { z } from "zod";
 
+import {
+  documentationExampleSchema,
+  engineRuleSchema,
+  modifierOperationSchema,
+  type ModifierOperation,
+} from "../config/typed-rules";
+
 const stableId = z.string().trim().min(1);
 const nonEmptyText = z.string().trim().min(1);
 
@@ -57,6 +64,7 @@ export const moduleImportSchema = z
     checkpoint: nonEmptyText,
     recommendationStableIds: z.array(stableId),
     constraints: z.string().trim(),
+    sortOrder: z.number().int().positive(),
     active: z.boolean(),
   })
   .strict();
@@ -70,6 +78,7 @@ export const modifierImportSchema = z
     type: z.enum(["COPY", "PACE"]),
     variantKey: nonEmptyText,
     effect: modifierEffectSchema,
+    operation: modifierOperationSchema,
     active: z.boolean(),
   })
   .strict();
@@ -83,6 +92,7 @@ export const recommendationImportSchema = z
     url: z.url().nullable(),
     status: z.enum(["ACTIVE", "SLOT", "INACTIVE"]),
     tags: z.array(nonEmptyText),
+    priorityTags: z.array(nonEmptyText),
     active: z.boolean(),
   })
   .strict();
@@ -126,16 +136,40 @@ const sourceNoteSchema = z
   .object({ id: nonEmptyText, title: nonEmptyText, content: nonEmptyText })
   .strict();
 
-const sourceExampleSchema = z
-  .object({
-    stableId,
-    selectedAnswers: nonEmptyText,
-    resultingModules: nonEmptyText,
-    primaryFocus: nonEmptyText,
-    stepsSummary: nonEmptyText,
-    recommendationsSummary: nonEmptyText,
-  })
-  .strict();
+function validateModifierOperationReferences(
+  operation: ModifierOperation,
+  references: {
+    answers: Map<string, unknown>;
+    questions: Map<string, unknown>;
+    modifiers: Set<string>;
+    answerTags: Set<string>;
+  },
+  context: z.RefinementCtx,
+  path: (string | number)[],
+) {
+  const requireQuestion = (id: string) => {
+    if (!references.questions.has(id)) {
+      context.addIssue({ code: "custom", path, message: `question ${id} not found` });
+    }
+  };
+  if (operation.operationKind === "SET_PRIORITIES") {
+    requireQuestion(operation.params.questionId);
+  }
+  if (operation.operationKind === "SET_PACE") {
+    requireQuestion(operation.params.questionId);
+  }
+  if (operation.operationKind === "REPLACE_M11_STAGE") {
+    requireQuestion(operation.params.questionId);
+    operation.params.replacesBaseModifierIds.forEach((id) => {
+      if (!references.modifiers.has(id)) {
+        context.addIssue({ code: "custom", path, message: `modifier ${id} not found` });
+      }
+    });
+  }
+  if (operation.operationKind === "APPEND_M11_CHALLENGE") {
+    requireQuestion(operation.params.questionId);
+  }
+}
 
 export const careerImportSchema = z
   .object({
@@ -157,8 +191,8 @@ export const careerImportSchema = z
     moduleRecommendations: z.array(moduleRecommendationImportSchema),
     entrepreneurStages: z.array(entrepreneurStageImportSchema),
     entrepreneurChallenges: z.array(entrepreneurChallengeImportSchema),
-    rules: z.array(sourceNoteSchema),
-    examples: z.array(sourceExampleSchema),
+    engineRules: z.array(engineRuleSchema),
+    documentationExamples: z.array(documentationExampleSchema),
     editingInstructions: z.array(sourceNoteSchema),
   })
   .strict()
@@ -193,6 +227,12 @@ export const careerImportSchema = z
       (item) => item.stableId,
       "entrepreneurChallenges",
     );
+    unique(config.engineRules, (item) => item.stableId, "engineRules");
+    unique(
+      config.documentationExamples,
+      (item) => item.stableId,
+      "documentationExamples",
+    );
     unique(
       config.mappings,
       (item) => `${item.answerStableId}:${item.moduleStableId}`,
@@ -210,6 +250,39 @@ export const careerImportSchema = z
     const recommendations = new Set(
       config.recommendations.map((item) => item.stableId),
     );
+    const modifiers = new Set(config.modifiers.map((item) => item.stableId));
+    const answerTags = new Set(config.answers.flatMap((item) => item.tags));
+    const answerKeys = new Set(config.answers.flatMap((item) => item.keys));
+
+    const expectedRuleIds = Array.from(
+      { length: 17 },
+      (_, index) => `R${String(index + 1).padStart(2, "0")}`,
+    );
+    const actualRuleIds = config.engineRules
+      .map((rule) => rule.stableId)
+      .sort();
+    if (JSON.stringify(actualRuleIds) !== JSON.stringify(expectedRuleIds)) {
+      context.addIssue({
+        code: "custom",
+        path: ["engineRules"],
+        message: "engineRules must contain R01-R17 exactly once",
+      });
+    }
+
+    const expectedExampleIds = Array.from(
+      { length: 7 },
+      (_, index) => `E${String(index + 1).padStart(2, "0")}`,
+    );
+    const actualExampleIds = config.documentationExamples
+      .map((example) => example.stableId)
+      .sort();
+    if (JSON.stringify(actualExampleIds) !== JSON.stringify(expectedExampleIds)) {
+      context.addIssue({
+        code: "custom",
+        path: ["documentationExamples"],
+        message: "documentationExamples must contain E01-E07 exactly once",
+      });
+    }
 
     config.questions.forEach((question, index) => {
       if (question.minSelect > question.maxSelect) {
@@ -320,6 +393,114 @@ export const careerImportSchema = z
           message: `модуль ${modifier.targetModuleStableId} не найден`,
         });
       }
+      validateModifierOperationReferences(
+        modifier.operation,
+        { answers, questions, modifiers, answerTags },
+        context,
+        ["modifiers", index, "operation"],
+      );
+    });
+
+    config.engineRules.forEach((rule, index) => {
+      const path = ["engineRules", index, "params"] as (string | number)[];
+      const requireQuestion = (id: string) => {
+        if (!questions.has(id)) {
+          context.addIssue({ code: "custom", path, message: `question ${id} not found` });
+        }
+      };
+      const requireAnswer = (id: string) => {
+        if (!answers.has(id)) {
+          context.addIssue({ code: "custom", path, message: `answer ${id} not found` });
+        }
+      };
+      const requireModule = (id: string) => {
+        if (!modules.has(id)) {
+          context.addIssue({ code: "custom", path, message: `module ${id} not found` });
+        }
+      };
+      const requireModifier = (id: string) => {
+        if (!modifiers.has(id)) {
+          context.addIssue({ code: "custom", path, message: `modifier ${id} not found` });
+        }
+      };
+      const requireTag = (tag: string) => {
+        if (!answerTags.has(tag)) {
+          context.addIssue({ code: "custom", path, message: `answer tag ${tag} not found` });
+        }
+      };
+
+      switch (rule.ruleKind) {
+        case "TIE_BREAK":
+          rule.params.questionIds.forEach(requireQuestion);
+          break;
+        case "MODIFIER_APPLICATION":
+          rule.params.nonScoringQuestionIds.forEach(requireQuestion);
+          rule.params.m11StageOverridesModifierIds.forEach(requireModifier);
+          break;
+        case "RECOMMENDATION_PREFERENCE":
+          requireQuestion(rule.params.questionId);
+          Object.entries(rule.params.answerPreferences).forEach(
+            ([id, preference]) => {
+              requireAnswer(id);
+              preference.recommendationIds.forEach((recommendationId) => {
+                if (!recommendations.has(recommendationId)) {
+                  context.addIssue({
+                    code: "custom",
+                    path,
+                    message: `recommendation ${recommendationId} not found`,
+                  });
+                }
+              });
+            },
+          );
+          break;
+        case "PRIORITY_CAPTURE":
+          requireQuestion(rule.params.questionId);
+          rule.params.allowedKeys.forEach((key) => {
+            if (!answerKeys.has(key)) {
+              context.addIssue({ code: "custom", path, message: `answer key ${key} not found` });
+            }
+          });
+          break;
+        case "PACE_MAPPING":
+          requireQuestion(rule.params.questionId);
+          rule.params.values.forEach((value) => requireAnswer(value.answerId));
+          break;
+        case "CONTENT_POLICY":
+          rule.params.triggerAnswerIds.forEach(requireAnswer);
+          requireModule(rule.params.targetModuleId);
+          rule.params.modifierIds.forEach(requireModifier);
+          break;
+        case "MODULE_GUARD":
+          requireModule(rule.params.moduleId);
+          if (rule.params.allowPrimaryWhen.kind === "ANY_ANSWER_ID") {
+            rule.params.allowPrimaryWhen.answerIds.forEach(requireAnswer);
+          } else {
+            rule.params.allowPrimaryWhen.tags.forEach(requireTag);
+          }
+          break;
+        case "CONDITIONAL_BRANCH":
+          rule.params.questionIds.forEach(requireQuestion);
+          requireTag(rule.params.condition.tag);
+          break;
+        case "ENTREPRENEUR_COMPOSITION":
+          requireModule(rule.params.moduleId);
+          requireQuestion(rule.params.stageQuestionId);
+          requireQuestion(rule.params.challengeQuestionId);
+          break;
+        case "FALLBACK_SELECTION":
+          rule.params.conditions.forEach((condition) => {
+            requireModule(condition.moduleId);
+            if (condition.kind === "ANY_ANSWER_ID") {
+              condition.answerIds.forEach(requireAnswer);
+            } else {
+              condition.tags.forEach(requireTag);
+            }
+          });
+          break;
+        default:
+          break;
+      }
     });
 
     const validateEntrepreneurItem = (
@@ -360,6 +541,7 @@ export const careerImportSchema = z
 
 export type CareerImport = z.infer<typeof careerImportSchema>;
 export type ModifierEffect = z.infer<typeof modifierEffectSchema>;
+export type { ModifierOperation };
 
 export function validateCareerImport(input: unknown): CareerImport {
   const result = careerImportSchema.safeParse(input);

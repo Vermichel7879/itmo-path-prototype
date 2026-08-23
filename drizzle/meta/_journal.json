@@ -15,6 +15,13 @@
       "when": 1787505995250,
       "tag": "0001_immutable-published-config",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787522747953,
+      "tag": "0002_slimy_zarek",
+      "breakpoints": true
     }
   ]
 }

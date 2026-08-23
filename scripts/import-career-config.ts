@@ -23,8 +23,8 @@ function printSummary(summary: ReturnType<typeof summarizeCareerImport>) {
   console.log(`Modifiers: ${summary.modifiers}`);
   console.log(`Entrepreneur stages: ${summary.entrepreneurStages}`);
   console.log(`Entrepreneur challenges: ${summary.entrepreneurChallenges}`);
-  console.log(`Rules recognized: ${summary.rules}`);
-  console.log(`Examples recognized: ${summary.examples}`);
+  console.log(`Rules: ${summary.engineRules}`);
+  console.log(`Documentation examples: ${summary.documentationExamples}`);
 }
 
 async function main() {

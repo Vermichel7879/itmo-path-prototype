@@ -17,6 +17,7 @@ import {
   varchar,
 } from "drizzle-orm/pg-core";
 
+import type { EngineRule, ModifierOperation } from "../config/typed-rules";
 import type { CareerImport, ModifierEffect } from "../import/import-model";
 
 export const adminRoleEnum = pgEnum("admin_role", ["ADMIN", "EDITOR"]);
@@ -33,6 +34,34 @@ export const modifierTypeEnum = pgEnum("modifier_type", ["COPY", "PACE"]);
 export const modifierTargetScopeEnum = pgEnum("modifier_target_scope", [
   "MODULE",
   "ALL",
+]);
+export const modifierOperationKindEnum = pgEnum(
+  "modifier_operation_kind",
+  [
+    "REPLACE_STEP",
+    "APPEND_ADJUSTMENT",
+    "SET_PRIORITIES",
+    "SET_PACE",
+    "REPLACE_M11_STAGE",
+    "APPEND_M11_CHALLENGE",
+  ],
+);
+export const engineRuleKindEnum = pgEnum("engine_rule_kind", [
+  "WEIGHTED_SCORING",
+  "TIE_BREAK",
+  "RESULT_COMPOSITION",
+  "SUPPORT_SELECTION",
+  "MODIFIER_APPLICATION",
+  "RECOMMENDATION_SELECTION",
+  "RECOMMENDATION_PREFERENCE",
+  "PRIORITY_CAPTURE",
+  "PACE_MAPPING",
+  "RECOMMENDATION_DEDUPLICATION",
+  "CONTENT_POLICY",
+  "MODULE_GUARD",
+  "CONDITIONAL_BRANCH",
+  "ENTREPRENEUR_COMPOSITION",
+  "FALLBACK_SELECTION",
 ]);
 export const recommendationTypeEnum = pgEnum("recommendation_type", [
   "CKO_SERVICE",
@@ -256,6 +285,7 @@ export const modules = pgTable(
     step3: text("step_3").notNull(),
     checkpoint: text("checkpoint").notNull(),
     constraints: text("constraints").default("").notNull(),
+    sortOrder: integer("sort_order"),
     active: boolean("active").default(true).notNull(),
     ...timestamps,
   },
@@ -265,7 +295,15 @@ export const modules = pgTable(
       table.configVersionId,
       table.stableId,
     ),
+    uniqueIndex("modules_version_sort_unique").on(
+      table.configVersionId,
+      table.sortOrder,
+    ),
     index("modules_version_active_idx").on(table.configVersionId, table.active),
+    check(
+      "modules_sort_positive",
+      sql`${table.sortOrder} IS NULL OR ${table.sortOrder} > 0`,
+    ),
   ],
 );
 
@@ -320,6 +358,8 @@ export const modifiers = pgTable(
     type: modifierTypeEnum("type").notNull(),
     variantKey: varchar("variant_key", { length: 120 }).notNull(),
     effect: jsonb("effect").$type<ModifierEffect>().notNull(),
+    operationKind: modifierOperationKindEnum("operation_kind"),
+    operationParams: jsonb("operation_params").$type<ModifierOperation["params"]>(),
     active: boolean("active").default(true).notNull(),
     ...timestamps,
   },
@@ -345,6 +385,85 @@ export const modifiers = pgTable(
       "modifiers_target_scope_consistent",
       sql`(${table.targetScope} = 'ALL' AND ${table.targetModuleId} IS NULL) OR (${table.targetScope} = 'MODULE' AND ${table.targetModuleId} IS NOT NULL)`,
     ),
+    check(
+      "modifiers_operation_complete",
+      sql`(${table.operationKind} IS NULL AND ${table.operationParams} IS NULL) OR (${table.operationKind} IS NOT NULL AND ${table.operationParams} IS NOT NULL)`,
+    ),
+  ],
+);
+
+export const engineRules = pgTable(
+  "engine_rules",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    configVersionId: uuid("config_version_id")
+      .notNull()
+      .references(() => configVersions.id, { onDelete: "cascade" }),
+    stableId: varchar("stable_id", { length: 40 }).notNull(),
+    ruleKind: engineRuleKindEnum("rule_kind").notNull(),
+    params: jsonb("params").$type<EngineRule["params"]>().notNull(),
+    sourceTitle: text("source_title").notNull(),
+    sourceContent: text("source_content").notNull(),
+    sortOrder: integer("sort_order").notNull(),
+    active: boolean("active").default(true).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("engine_rules_version_stable_unique").on(
+      table.configVersionId,
+      table.stableId,
+    ),
+    uniqueIndex("engine_rules_version_sort_unique").on(
+      table.configVersionId,
+      table.sortOrder,
+    ),
+    index("engine_rules_version_kind_idx").on(
+      table.configVersionId,
+      table.ruleKind,
+    ),
+    check("engine_rules_sort_positive", sql`${table.sortOrder} > 0`),
+    check(
+      "engine_rules_stable_id_format",
+      sql`${table.stableId} ~ '^R(0[1-9]|1[0-7])$'`,
+    ),
+    check(
+      "engine_rules_source_not_blank",
+      sql`length(trim(${table.sourceTitle})) > 0 AND length(trim(${table.sourceContent})) > 0`,
+    ),
+  ],
+);
+
+export const documentationExamples = pgTable(
+  "documentation_examples",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    configVersionId: uuid("config_version_id")
+      .notNull()
+      .references(() => configVersions.id, { onDelete: "cascade" }),
+    stableId: varchar("stable_id", { length: 40 }).notNull(),
+    inputSummary: text("input_summary").notNull(),
+    expectedModuleSummary: text("expected_module_summary").notNull(),
+    primaryFocus: text("primary_focus").notNull(),
+    stepsSummary: text("steps_summary").notNull(),
+    recommendationsSummary: text("recommendations_summary").notNull(),
+    sortOrder: integer("sort_order").notNull(),
+    active: boolean("active").default(true).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("documentation_examples_version_stable_unique").on(
+      table.configVersionId,
+      table.stableId,
+    ),
+    uniqueIndex("documentation_examples_version_sort_unique").on(
+      table.configVersionId,
+      table.sortOrder,
+    ),
+    check("documentation_examples_sort_positive", sql`${table.sortOrder} > 0`),
+    check(
+      "documentation_examples_stable_id_format",
+      sql`${table.stableId} ~ '^E0[1-7]$'`,
+    ),
   ],
 );
 
@@ -362,6 +481,10 @@ export const recommendations = pgTable(
     url: text("url"),
     status: recommendationStatusEnum("status").default("ACTIVE").notNull(),
     tags: jsonb("tags").$type<string[]>().default(sql`'[]'::jsonb`).notNull(),
+    priorityTags: jsonb("priority_tags")
+      .$type<string[]>()
+      .default(sql`'[]'::jsonb`)
+      .notNull(),
     active: boolean("active").default(true).notNull(),
     ...timestamps,
   },

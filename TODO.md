@@ -47,6 +47,19 @@
 - [x] Пройти quality gates.
 - [x] STOP и запросить разрешение на PHASE 3.
 
+## PHASE 2.5 — типизированная конфигурация правил
+
+- [x] Зафиксировать product decisions R01–R17 и modifier operations.
+- [x] Отделить исполняемые `rule_kind + params` от исходного текста правил.
+- [x] Добавить Zod discriminated unions, полную cross-reference validation и canonical snapshot builder.
+- [x] Представить E01–E07 как неисполняемые versioned documentation examples.
+- [x] Добавить точные test-only fixtures T01–T31 без production business data.
+- [x] Сгенерировать offline migration 0002 и Drizzle metadata.
+- [x] Подготовить атомарные SQL Editor upgrade и rule seed chunks с verify.
+- [x] Применить upgrade/seed к Supabase вручную и read-only проверить live DRAFT.
+- [x] Подтвердить, что PUBLISHED отсутствует; publish workflow остаётся границей следующей фазы.
+- [x] STOP до отдельного разрешения на PHASE 3.
+
 ## PHASE 3 — rule engine и реальные данные
 
 - [ ] Реализовать чистый typed rule engine отдельно от UI.

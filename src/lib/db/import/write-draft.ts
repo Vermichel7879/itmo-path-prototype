@@ -8,6 +8,8 @@ import {
   answerModuleWeights,
   auditLog,
   configVersions,
+  documentationExamples,
+  engineRules,
   entrepreneurChallenges,
   entrepreneurStages,
   modifiers,
@@ -106,6 +108,7 @@ export async function replaceDraftFromImport(
         step3: module.steps[2],
         checkpoint: module.checkpoint,
         constraints: module.constraints,
+        sortOrder: module.sortOrder,
         active: module.active,
       })),
     );
@@ -127,6 +130,7 @@ export async function replaceDraftFromImport(
         url: recommendation.url,
         status: recommendation.status,
         tags: recommendation.tags,
+        priorityTags: recommendation.priorityTags,
         active: recommendation.active,
       })),
     );
@@ -160,7 +164,36 @@ export async function replaceDraftFromImport(
         type: modifier.type,
         variantKey: modifier.variantKey,
         effect: modifier.effect,
+        operationKind: modifier.operation.operationKind,
+        operationParams: modifier.operation.params,
         active: modifier.active,
+      })),
+    );
+
+    await transaction.insert(engineRules).values(
+      config.engineRules.map((rule) => ({
+        configVersionId: versionId,
+        stableId: rule.stableId,
+        ruleKind: rule.ruleKind,
+        params: rule.params,
+        sourceTitle: rule.sourceTitle,
+        sourceContent: rule.sourceContent,
+        sortOrder: rule.sortOrder,
+        active: rule.active,
+      })),
+    );
+
+    await transaction.insert(documentationExamples).values(
+      config.documentationExamples.map((example) => ({
+        configVersionId: versionId,
+        stableId: example.stableId,
+        inputSummary: example.inputSummary,
+        expectedModuleSummary: example.expectedModuleSummary,
+        primaryFocus: example.primaryFocus,
+        stepsSummary: example.stepsSummary,
+        recommendationsSummary: example.recommendationsSummary,
+        sortOrder: example.sortOrder,
+        active: example.active,
       })),
     );
 

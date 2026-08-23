@@ -1343,6 +1343,7 @@
         "GEN_MARKET_SCAN"
       ],
       "constraints": "Если Q4_A1 выбран: не «выбрать с нуля», а проверить выбранную роль на реальных вакансиях.",
+      "sortOrder": 1,
       "active": true
     },
     {
@@ -1363,6 +1364,7 @@
         "GEN_SEARCH_TRACKER"
       ],
       "constraints": "Если Q4_A5 выбран: не собирать список заново, а проверить его качество и расширить каналы.",
+      "sortOrder": 2,
       "active": true
     },
     {
@@ -1384,6 +1386,7 @@
         "GEN_EVIDENCE"
       ],
       "constraints": "Если Q4_A3/Q4_A4 выбран: акцент на упаковку существующего опыта и на более сильный следующий кейс.",
+      "sortOrder": 3,
       "active": true
     },
     {
@@ -1404,6 +1407,7 @@
         "GEN_SKILL_GAP"
       ],
       "constraints": "Не превращать результат в длинный список курсов: в траектории должно быть не больше 2 приоритетных навыков.",
+      "sortOrder": 4,
       "active": true
     },
     {
@@ -1423,6 +1427,7 @@
         "GEN_RESUME_AUDIT"
       ],
       "constraints": "Для Q2_A8 добавить вариант «первичный фильтр»: проверить читаемость, релевантность, ключевые требования и конверсию откликов. Не обещать «обход ATS».",
+      "sortOrder": 5,
       "active": true
     },
     {
@@ -1441,6 +1446,7 @@
         "GEN_MOCK_INTERVIEW"
       ],
       "constraints": "Подстраивать примеры под выбранную роль; не выдавать универсальный список «правильных ответов».",
+      "sortOrder": 6,
       "active": true
     },
     {
@@ -1460,6 +1466,7 @@
         "GEN_TEST_FRAMEWORK"
       ],
       "constraints": "Для технических направлений можно подставлять факультетские/клубные практики; конкретику подключать позже из каталога.",
+      "sortOrder": 7,
       "active": true
     },
     {
@@ -1480,6 +1487,7 @@
         "GEN_SEARCH_RHYTHM"
       ],
       "constraints": "Фокус на управляемых действиях и воронке. Не давать психологических диагнозов или обещаний.",
+      "sortOrder": 8,
       "active": true
     },
     {
@@ -1498,6 +1506,7 @@
         "GEN_OFFER_MATRIX"
       ],
       "constraints": "Если вариантов пока нет, модуль не должен попадать в топ только из-за общего интереса к стажировкам.",
+      "sortOrder": 9,
       "active": true
     },
     {
@@ -1518,6 +1527,7 @@
         "GEN_SEMESTER_PLAN"
       ],
       "constraints": "Подходит и тем, кто уже работает: акцент на качестве опыта и следующем уровне задач.",
+      "sortOrder": 10,
       "active": true
     },
     {
@@ -1539,6 +1549,7 @@
         "GEN_ENT_MODEL"
       ],
       "constraints": "Не начинать с регистрации бизнеса, большого бизнес-плана или поиска инвестиций. Сначала проблема, пользователь и спрос. Для действующего проекта использовать подветку по стадии из листа 09.",
+      "sortOrder": 11,
       "active": true
     }
   ],
@@ -1554,6 +1565,14 @@
         "kind": "copy",
         "description": "Вместо «выберите направление» → «проверьте выбранную роль на реальных вакансиях»."
       },
+      "operation": {
+        "operationKind": "REPLACE_STEP",
+        "params": {
+          "stepNumber": 3,
+          "replacementText": "Проверьте выбранную роль на реальных вакансиях.",
+          "appliesWhen": "ALWAYS"
+        }
+      },
       "active": true
     },
     {
@@ -1566,6 +1585,14 @@
       "effect": {
         "kind": "copy",
         "description": "Вместо «создайте резюме» → «проведите аудит и адаптацию актуального резюме»."
+      },
+      "operation": {
+        "operationKind": "REPLACE_STEP",
+        "params": {
+          "stepNumber": 1,
+          "replacementText": "Проведите аудит и адаптацию актуального резюме.",
+          "appliesWhen": "ALWAYS"
+        }
       },
       "active": true
     },
@@ -1580,6 +1607,14 @@
         "kind": "copy",
         "description": "Вместо «создайте первый кейс» → «усильте и упакуйте существующие кейсы»."
       },
+      "operation": {
+        "operationKind": "REPLACE_STEP",
+        "params": {
+          "stepNumber": 3,
+          "replacementText": "Усильте и упакуйте существующие кейсы.",
+          "appliesWhen": "ALWAYS"
+        }
+      },
       "active": true
     },
     {
@@ -1592,6 +1627,14 @@
       "effect": {
         "kind": "copy",
         "description": "Вместо «получите любой опыт» → «упакуйте текущий опыт и найдите следующий более сильный кейс»."
+      },
+      "operation": {
+        "operationKind": "REPLACE_STEP",
+        "params": {
+          "stepNumber": 2,
+          "replacementText": "Упакуйте текущий опыт и найдите следующий более сильный кейс.",
+          "appliesWhen": "ALWAYS"
+        }
       },
       "active": true
     },
@@ -1606,6 +1649,14 @@
         "kind": "copy",
         "description": "Вместо «соберите список компаний» → «расширьте каналы и проверьте качество текущего списка»."
       },
+      "operation": {
+        "operationKind": "REPLACE_STEP",
+        "params": {
+          "stepNumber": 2,
+          "replacementText": "Расширьте каналы и проверьте качество текущего списка.",
+          "appliesWhen": "ALWAYS"
+        }
+      },
       "active": true
     },
     {
@@ -1618,6 +1669,13 @@
       "effect": {
         "kind": "copy",
         "description": "Добавить блок про первичный фильтр: простая структура, релевантные термины, адаптация под вакансию, контроль конверсии."
+      },
+      "operation": {
+        "operationKind": "APPEND_ADJUSTMENT",
+        "params": {
+          "text": "Добавить блок про первичный фильтр: простая структура, релевантные термины, адаптация под вакансию, контроль конверсии.",
+          "placement": "AFTER_PRIMARY_STEPS"
+        }
       },
       "active": true
     },
@@ -1632,6 +1690,14 @@
         "kind": "copy",
         "description": "Не искать идею с нуля: перейти к формулировке аудитории, проблемы и проверке спроса."
       },
+      "operation": {
+        "operationKind": "REPLACE_STEP",
+        "params": {
+          "stepNumber": 1,
+          "replacementText": "Сформулируйте аудиторию и проблему, затем перейдите к проверке спроса.",
+          "appliesWhen": "NO_M11_STAGE"
+        }
+      },
       "active": true
     },
     {
@@ -1644,6 +1710,14 @@
       "effect": {
         "kind": "copy",
         "description": "Не предлагать «первую проверку»: перейти к обратной связи пользователей, повторяемости спроса и бизнес-модели."
+      },
+      "operation": {
+        "operationKind": "REPLACE_STEP",
+        "params": {
+          "stepNumber": 2,
+          "replacementText": "Соберите обратную связь пользователей и проверьте повторяемость спроса и бизнес-модель.",
+          "appliesWhen": "NO_M11_STAGE"
+        }
       },
       "active": true
     },
@@ -1658,6 +1732,14 @@
         "kind": "copy",
         "description": "Вывести 1–3 выбранных ориентира отдельной строкой «Для вас важно»; не менять скоринг."
       },
+      "operation": {
+        "operationKind": "SET_PRIORITIES",
+        "params": {
+          "questionId": "Q6",
+          "resultField": "priorities",
+          "valueSource": "SELECTED_ANSWER_TEXT"
+        }
+      },
       "active": true
     },
     {
@@ -1670,6 +1752,13 @@
       "effect": {
         "kind": "pace",
         "description": "Изменить интенсивность и частоту действий по правилам R10."
+      },
+      "operation": {
+        "operationKind": "SET_PACE",
+        "params": {
+          "questionId": "Q7",
+          "ruleId": "R10"
+        }
       },
       "active": true
     },
@@ -1684,6 +1773,17 @@
         "kind": "copy",
         "description": "Выбрать стадийный вариант из листа «09_Предпринимательство»."
       },
+      "operation": {
+        "operationKind": "REPLACE_M11_STAGE",
+        "params": {
+          "questionId": "Q9",
+          "source": "ENTREPRENEUR_STAGES",
+          "replacesBaseModifierIds": [
+            "MOD07",
+            "MOD08"
+          ]
+        }
+      },
       "active": true
     },
     {
@@ -1697,6 +1797,16 @@
         "kind": "copy",
         "description": "Добавить 1–2 действия по выбранным задачам из листа «09_Предпринимательство»."
       },
+      "operation": {
+        "operationKind": "APPEND_M11_CHALLENGE",
+        "params": {
+          "questionId": "Q10",
+          "source": "ENTREPRENEUR_CHALLENGES",
+          "outputField": "entrepreneurAdjustments",
+          "maxItems": 2,
+          "order": "ANSWER_SORT_ORDER_ASC"
+        }
+      },
       "active": true
     }
   ],
@@ -1709,6 +1819,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1719,6 +1830,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1729,6 +1841,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1739,6 +1852,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1749,6 +1863,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1759,6 +1874,7 @@
       "url": null,
       "status": "SLOT",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1769,6 +1885,7 @@
       "url": null,
       "status": "SLOT",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1779,6 +1896,7 @@
       "url": null,
       "status": "SLOT",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1789,6 +1907,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1799,6 +1918,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1809,6 +1929,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1819,6 +1940,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1829,6 +1951,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1839,6 +1962,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1849,6 +1973,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1859,6 +1984,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1869,6 +1995,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1879,6 +2006,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1889,6 +2017,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1899,6 +2028,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1909,6 +2039,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     },
     {
@@ -1919,6 +2050,7 @@
       "url": null,
       "status": "ACTIVE",
       "tags": [],
+      "priorityTags": [],
       "active": true
     }
   ],
@@ -2338,149 +2470,594 @@
       "active": true
     }
   ],
-  "rules": [
+  "engineRules": [
     {
-      "id": "R01",
-      "title": "Скоринг",
-      "content": "Каждый выбранный ответ со значением в «Маппинг/вес» добавляет вес связанным модулям по таблице «02_Маппинг»."
+      "stableId": "R01",
+      "sourceTitle": "Скоринг",
+      "sourceContent": "Каждый выбранный ответ со значением в «Маппинг/вес» добавляет вес связанным модулям по таблице «02_Маппинг».",
+      "sortOrder": 1,
+      "active": true,
+      "ruleKind": "WEIGHTED_SCORING",
+      "params": {
+        "aggregation": "SUM",
+        "mappingSource": "ANSWER_MODULE_WEIGHTS",
+        "selectedAnswersOnly": true
+      }
     },
     {
-      "id": "R02",
-      "title": "Главный сигнал",
-      "content": "Ответы Q2 (сложности) важнее остальных при равном итоговом балле."
+      "stableId": "R02",
+      "sourceTitle": "Главный сигнал",
+      "sourceContent": "Ответы Q2 (сложности) важнее остальных при равном итоговом балле.",
+      "sortOrder": 2,
+      "active": true,
+      "ruleKind": "TIE_BREAK",
+      "params": {
+        "questionIds": [
+          "Q2"
+        ],
+        "questionScoreAggregation": "SUM_WEIGHTS",
+        "finalComparator": null
+      }
     },
     {
-      "id": "R03",
-      "title": "Второй приоритет",
-      "content": "При равенстве после Q2 приоритет получает модуль, поддержанный Q3 (цель), затем Q1 (этап), затем Q5 (формат)."
+      "stableId": "R03",
+      "sourceTitle": "Второй приоритет",
+      "sourceContent": "При равенстве после Q2 приоритет получает модуль, поддержанный Q3 (цель), затем Q1 (этап), затем Q5 (формат).",
+      "sortOrder": 3,
+      "active": true,
+      "ruleKind": "TIE_BREAK",
+      "params": {
+        "questionIds": [
+          "Q3",
+          "Q1",
+          "Q5"
+        ],
+        "questionScoreAggregation": "SUM_WEIGHTS",
+        "finalComparator": "MODULE_SORT_ORDER_ASC"
+      }
     },
     {
-      "id": "R04",
-      "title": "Количество модулей",
-      "content": "В PDF выводить 1 основной модуль + максимум 2 поддерживающих."
+      "stableId": "R04",
+      "sourceTitle": "Количество модулей",
+      "sourceContent": "В PDF выводить 1 основной модуль + максимум 2 поддерживающих.",
+      "sortOrder": 4,
+      "active": true,
+      "ruleKind": "RESULT_COMPOSITION",
+      "params": {
+        "primaryCount": 1,
+        "maxSupportCount": 2,
+        "sections": [
+          {
+            "stableId": "TITLE",
+            "title": "Заголовок",
+            "template": "Ваша карьерная траектория: {primary_module_name}",
+            "guidance": "Название меняется по основному модулю.",
+            "sortOrder": 1
+          },
+          {
+            "stableId": "CURRENT_POINT",
+            "title": "Точка А",
+            "template": "Сейчас ваш главный фокус — {primary_goal}.",
+            "guidance": "1–2 предложения на основе этапа + главной сложности.",
+            "sortOrder": 2
+          },
+          {
+            "stableId": "PRIORITIES",
+            "title": "Ваши ориентиры",
+            "template": "Для вас сейчас особенно важны: {priority_1}; {priority_2}; {priority_3}.",
+            "guidance": "Блок из Q6.",
+            "sortOrder": 3
+          },
+          {
+            "stableId": "PRIMARY_STEPS",
+            "title": "Три шага",
+            "template": "{primary_step_1}; {primary_step_2}; {primary_step_3}",
+            "guidance": "Берутся из основного модуля с учётом модификаторов. Для M11 — из листа 09.",
+            "sortOrder": 4
+          },
+          {
+            "stableId": "SUPPORT_MODULES",
+            "title": "Что добавить",
+            "template": "{support_module_1}; {support_module_2}",
+            "guidance": "Короткие блоки по 1–2 действия.",
+            "sortOrder": 5
+          },
+          {
+            "stableId": "RECOMMENDATIONS",
+            "title": "Что использовать в ИТМО",
+            "template": "{recommendation_1}; {recommendation_2}; {recommendation_3}",
+            "guidance": "Карточки из каталога рекомендаций.",
+            "sortOrder": 6
+          },
+          {
+            "stableId": "PACE",
+            "title": "Ваш темп",
+            "template": "{pace_text}",
+            "guidance": "Формируется по Q7: лёгкий / обычный / активный / интенсивный.",
+            "sortOrder": 7
+          },
+          {
+            "stableId": "CHECKPOINT",
+            "title": "Контрольная точка",
+            "template": "Через 2–4 недели у вас должно быть: {success_marker}.",
+            "guidance": "Маркер результата основного модуля.",
+            "sortOrder": 8
+          },
+          {
+            "stableId": "DISCLAIMER",
+            "title": "Дисклеймер",
+            "template": "Это стартовая траектория, а не карьерная диагностика. Её стоит уточнять после первых действий.",
+            "guidance": "Один короткий абзац.",
+            "sortOrder": 9
+          }
+        ]
+      }
     },
     {
-      "id": "R05",
-      "title": "Минимум веса",
-      "content": "Поддерживающий модуль выводить только при суммарном весе ≥4. Если таких нет, оставить 1–2 модуля."
+      "stableId": "R05",
+      "sourceTitle": "Минимум веса",
+      "sourceContent": "Поддерживающий модуль выводить только при суммарном весе ≥4. Если таких нет, оставить 1–2 модуля.",
+      "sortOrder": 5,
+      "active": true,
+      "ruleKind": "SUPPORT_SELECTION",
+      "params": {
+        "supportThreshold": 4,
+        "belowThresholdPolicy": "EXCLUDE",
+        "noEligibleSupportPolicy": "PRIMARY_ONLY",
+        "ranking": "MODULE_RANKING"
+      }
     },
     {
-      "id": "R06",
-      "title": "Модификаторы",
-      "content": "Q4, Q6, Q7, Q8, Q9 и Q10 в основном меняют текст, темп и рекомендации, а не основную ветку."
+      "stableId": "R06",
+      "sourceTitle": "Модификаторы",
+      "sourceContent": "Q4, Q6, Q7, Q8, Q9 и Q10 в основном меняют текст, темп и рекомендации, а не основную ветку.",
+      "sortOrder": 6,
+      "active": true,
+      "ruleKind": "MODIFIER_APPLICATION",
+      "params": {
+        "nonScoringQuestionIds": [
+          "Q4",
+          "Q6",
+          "Q7",
+          "Q8",
+          "Q9",
+          "Q10"
+        ],
+        "executionOrder": [
+          "BASE_MODULE",
+          "BASE_MODIFIERS",
+          "M11_STAGE",
+          "M11_CHALLENGES",
+          "PRIORITIES",
+          "PACE"
+        ],
+        "conflictPolicy": "ERROR_ON_UNRESOLVED_SAME_TARGET",
+        "m11StageOverridesModifierIds": [
+          "MOD07",
+          "MOD08"
+        ]
+      }
     },
     {
-      "id": "R07",
-      "title": "Рекомендации",
-      "content": "Выбирать до 3 карточек: релевантный сервис ЦКО, слот экосистемы ИТМО и общая рекомендация. Если для модуля нет релевантного сервиса ЦКО, не добавлять его искусственно."
+      "stableId": "R07",
+      "sourceTitle": "Рекомендации",
+      "sourceContent": "Выбирать до 3 карточек: релевантный сервис ЦКО, слот экосистемы ИТМО и общая рекомендация. Если для модуля нет релевантного сервиса ЦКО, не добавлять его искусственно.",
+      "sortOrder": 7,
+      "active": true,
+      "ruleKind": "RECOMMENDATION_SELECTION",
+      "params": {
+        "maxRecommendations": 3,
+        "modulePrecedence": [
+          "PRIMARY",
+          "SUPPORT_1",
+          "SUPPORT_2"
+        ],
+        "withinModuleOrder": "PRIORITY_ASC",
+        "diversityMode": "SOFT",
+        "diversityCategories": [
+          {
+            "key": "CKO_SERVICE",
+            "recommendationTypes": [
+              "CKO_SERVICE"
+            ],
+            "requiresConcreteOpportunity": false
+          },
+          {
+            "key": "ECOSYSTEM",
+            "recommendationTypes": [
+              "EVENT",
+              "CLUB",
+              "FACULTY"
+            ],
+            "requiresConcreteOpportunity": true
+          },
+          {
+            "key": "GENERAL",
+            "recommendationTypes": [
+              "GENERAL"
+            ],
+            "requiresConcreteOpportunity": false
+          }
+        ],
+        "fillRemainingWithNextEligible": true,
+        "allowFewerThanMaximum": true,
+        "slotWithoutOpportunityPolicy": "EXCLUDE"
+      }
     },
     {
-      "id": "R08",
-      "title": "Формат поддержки",
-      "content": "Q8 меняет порядок карточек по предпочтению пользователя, но не карьерные приоритеты."
+      "stableId": "R08",
+      "sourceTitle": "Формат поддержки",
+      "sourceContent": "Q8 меняет порядок карточек по предпочтению пользователя, но не карьерные приоритеты.",
+      "sortOrder": 8,
+      "active": true,
+      "ruleKind": "RECOMMENDATION_PREFERENCE",
+      "params": {
+        "questionId": "Q8",
+        "selectionOrderPolicy": "IGNORE_CLICK_ORDER",
+        "multiplePreferencePolicy": "EQUAL_UNION",
+        "preferredBucketOrder": "NORMAL_CANDIDATE_ORDER",
+        "answerPreferences": {
+          "Q8_A1": {
+            "recommendationIds": [
+              "CKO_DIGEST"
+            ],
+            "recommendationTypes": [
+              "GENERAL"
+            ],
+            "defaultMix": false
+          },
+          "Q8_A2": {
+            "recommendationIds": [
+              "CKO_CONSULT"
+            ],
+            "recommendationTypes": [],
+            "defaultMix": false
+          },
+          "Q8_A3": {
+            "recommendationIds": [],
+            "recommendationTypes": [
+              "EVENT"
+            ],
+            "defaultMix": false
+          },
+          "Q8_A4": {
+            "recommendationIds": [
+              "CKO_PRACTICE"
+            ],
+            "recommendationTypes": [
+              "CLUB",
+              "FACULTY"
+            ],
+            "defaultMix": false
+          },
+          "Q8_A5": {
+            "recommendationIds": [],
+            "recommendationTypes": [],
+            "defaultMix": true
+          }
+        }
+      }
     },
     {
-      "id": "R09",
-      "title": "Ориентиры",
-      "content": "Q6 вывести в PDF как 1–3 коротких ориентира и использовать как дополнительный фильтр при выборе рекомендаций."
+      "stableId": "R09",
+      "sourceTitle": "Ориентиры",
+      "sourceContent": "Q6 вывести в PDF как 1–3 коротких ориентира и использовать как дополнительный фильтр при выборе рекомендаций.",
+      "sortOrder": 9,
+      "active": true,
+      "ruleKind": "PRIORITY_CAPTURE",
+      "params": {
+        "questionId": "Q6",
+        "resultField": "priorities",
+        "valueSource": "ANSWER_TEXT",
+        "minItems": 1,
+        "maxItems": 3,
+        "allowedKeys": [
+          "priority_tasks",
+          "priority_growth",
+          "priority_income",
+          "priority_flex",
+          "priority_stability",
+          "priority_team",
+          "priority_autonomy"
+        ],
+        "recommendationTagField": "priorityTags",
+        "recommendationMatching": "SOFT_PREFERRED_FIRST",
+        "untaggedCandidatePolicy": "KEEP_ELIGIBLE"
+      }
     },
     {
-      "id": "R10",
-      "title": "Темп",
-      "content": "Q7 меняет объём действий: light — 1 небольшой шаг/нед.; normal — 2–3; active — 3–4; intensive — можно добавлять параллельный эксперимент."
+      "stableId": "R10",
+      "sourceTitle": "Темп",
+      "sourceContent": "Q7 меняет объём действий: light — 1 небольшой шаг/нед.; normal — 2–3; active — 3–4; intensive — можно добавлять параллельный эксперимент.",
+      "sortOrder": 10,
+      "active": true,
+      "ruleKind": "PACE_MAPPING",
+      "params": {
+        "questionId": "Q7",
+        "values": [
+          {
+            "answerId": "Q7_A1",
+            "key": "pace_light",
+            "actionsPerWeekMin": 1,
+            "actionsPerWeekMax": 1,
+            "parallelExperimentAllowed": false,
+            "text": "Лёгкий темп: 1 небольшой шаг в неделю."
+          },
+          {
+            "answerId": "Q7_A2",
+            "key": "pace_normal",
+            "actionsPerWeekMin": 2,
+            "actionsPerWeekMax": 3,
+            "parallelExperimentAllowed": false,
+            "text": "Обычный темп: 2–3 действия в неделю."
+          },
+          {
+            "answerId": "Q7_A3",
+            "key": "pace_active",
+            "actionsPerWeekMin": 3,
+            "actionsPerWeekMax": 4,
+            "parallelExperimentAllowed": false,
+            "text": "Активный темп: 3–4 действия в неделю."
+          },
+          {
+            "answerId": "Q7_A4",
+            "key": "pace_intensive",
+            "actionsPerWeekMin": null,
+            "actionsPerWeekMax": null,
+            "parallelExperimentAllowed": true,
+            "text": "Интенсивный темп: можно вести параллельный эксперимент."
+          }
+        ],
+        "preservesCoreStepCount": 3,
+        "addAutomaticCoreStep": false
+      }
     },
     {
-      "id": "R11",
-      "title": "Дедупликация",
-      "content": "Одинаковая рекомендация не должна повторяться в разных модулях одного PDF."
+      "stableId": "R11",
+      "sourceTitle": "Дедупликация",
+      "sourceContent": "Одинаковая рекомендация не должна повторяться в разных модулях одного PDF.",
+      "sortOrder": 11,
+      "active": true,
+      "ruleKind": "RECOMMENDATION_DEDUPLICATION",
+      "params": {
+        "scope": "RESULT",
+        "keys": [
+          "RECOMMENDATION_ID",
+          "OPPORTUNITY_ID"
+        ],
+        "keep": "FIRST_BY_CANDIDATE_ORDER"
+      }
     },
     {
-      "id": "R12",
-      "title": "ATS",
-      "content": "Не обещать «обход» автоматических фильтров. Формулировать как повышение релевантности и читаемости отклика + контроль конверсии."
+      "stableId": "R12",
+      "sourceTitle": "ATS",
+      "sourceContent": "Не обещать «обход» автоматических фильтров. Формулировать как повышение релевантности и читаемости отклика + контроль конверсии.",
+      "sortOrder": 12,
+      "active": true,
+      "ruleKind": "CONTENT_POLICY",
+      "params": {
+        "triggerAnswerIds": [
+          "Q2_A8"
+        ],
+        "targetModuleId": "M05",
+        "modifierIds": [
+          "MOD06"
+        ],
+        "prohibitedClaims": [
+          "ATS_BYPASS"
+        ],
+        "requiredFraming": [
+          "RELEVANCE",
+          "READABILITY",
+          "ADAPTATION",
+          "CONVERSION"
+        ]
+      }
     },
     {
-      "id": "R13",
-      "title": "Офферы",
-      "content": "M09 не выводить как основной без явного сигнала Q1_A5, Q2_A13 или Q3_A10."
+      "stableId": "R13",
+      "sourceTitle": "Офферы",
+      "sourceContent": "M09 не выводить как основной без явного сигнала Q1_A5, Q2_A13 или Q3_A10.",
+      "sortOrder": 13,
+      "active": true,
+      "ruleKind": "MODULE_GUARD",
+      "params": {
+        "moduleId": "M09",
+        "allowPrimaryWhen": {
+          "kind": "ANY_ANSWER_ID",
+          "answerIds": [
+            "Q1_A5",
+            "Q2_A13",
+            "Q3_A10"
+          ]
+        },
+        "blockedPolicy": "REMOVE_FROM_PRIMARY_CANDIDATES"
+      }
     },
     {
-      "id": "R14",
-      "title": "Предпринимательство",
-      "content": "M11 не выводить как основной без entrepreneur_signal: Q1_A7, Q2_A14/Q2_A15, Q3_A12, Q4_A6/Q4_A7 или Q5_A4."
+      "stableId": "R14",
+      "sourceTitle": "Предпринимательство",
+      "sourceContent": "M11 не выводить как основной без entrepreneur_signal: Q1_A7, Q2_A14/Q2_A15, Q3_A12, Q4_A6/Q4_A7 или Q5_A4.",
+      "sortOrder": 14,
+      "active": true,
+      "ruleKind": "MODULE_GUARD",
+      "params": {
+        "moduleId": "M11",
+        "allowPrimaryWhen": {
+          "kind": "ANY_ANSWER_TAG",
+          "tags": [
+            "entrepreneur_signal"
+          ]
+        },
+        "blockedPolicy": "REMOVE_FROM_PRIMARY_CANDIDATES"
+      }
     },
     {
-      "id": "R15",
-      "title": "Условная ветка",
-      "content": "Если entrepreneur_signal = true, показать Q9 и Q10. Иначе эти вопросы не показывать."
+      "stableId": "R15",
+      "sourceTitle": "Условная ветка",
+      "sourceContent": "Если entrepreneur_signal = true, показать Q9 и Q10. Иначе эти вопросы не показывать.",
+      "sortOrder": 15,
+      "active": true,
+      "ruleKind": "CONDITIONAL_BRANCH",
+      "params": {
+        "condition": {
+          "kind": "ANSWER_TAG_SELECTED",
+          "tag": "entrepreneur_signal"
+        },
+        "questionIds": [
+          "Q9",
+          "Q10"
+        ],
+        "activePolicy": "SHOW_AND_VALIDATE",
+        "inactivePolicy": "HIDE_AND_IGNORE_ANSWERS"
+      }
     },
     {
-      "id": "R16",
-      "title": "Предпринимательская подветка",
-      "content": "Для M11 базовые шаги из «03_Модули» заменяются/уточняются контентом из «09_Предпринимательство» по Q9 и Q10."
+      "stableId": "R16",
+      "sourceTitle": "Предпринимательская подветка",
+      "sourceContent": "Для M11 базовые шаги из «03_Модули» заменяются/уточняются контентом из «09_Предпринимательство» по Q9 и Q10.",
+      "sortOrder": 16,
+      "active": true,
+      "ruleKind": "ENTREPRENEUR_COMPOSITION",
+      "params": {
+        "moduleId": "M11",
+        "stageQuestionId": "Q9",
+        "challengeQuestionId": "Q10",
+        "stageSource": "ENTREPRENEUR_STAGES",
+        "stageReplaces": [
+          "GOAL",
+          "STEP_1",
+          "STEP_2",
+          "STEP_3",
+          "CHECKPOINT"
+        ],
+        "challengeSource": "ENTREPRENEUR_CHALLENGES",
+        "challengeOutputField": "entrepreneurAdjustments",
+        "maxChallenges": 2,
+        "challengeOrder": "ANSWER_SORT_ORDER_ASC",
+        "challengeRecommendationSignal": true,
+        "coreStepCount": 3
+      }
     },
     {
-      "id": "R17",
-      "title": "Фолбэк",
-      "content": "Если ни один модуль не набрал 4 балла: M01 для не начавших поиск, M02 для ищущих, M10 для уже работающих; при entrepreneur_signal — M11."
+      "stableId": "R17",
+      "sourceTitle": "Фолбэк",
+      "sourceContent": "Если ни один модуль не набрал 4 балла: M01 для не начавших поиск, M02 для ищущих, M10 для уже работающих; при entrepreneur_signal — M11.",
+      "sortOrder": 17,
+      "active": true,
+      "ruleKind": "FALLBACK_SELECTION",
+      "params": {
+        "activation": {
+          "kind": "NO_ELIGIBLE_MODULE_AT_OR_ABOVE_THRESHOLD",
+          "thresholdRuleId": "R05"
+        },
+        "conditions": [
+          {
+            "kind": "ANY_ANSWER_TAG",
+            "tags": [
+              "entrepreneur_signal"
+            ],
+            "moduleId": "M11"
+          },
+          {
+            "kind": "ANY_ANSWER_ID",
+            "answerIds": [
+              "Q1_A1"
+            ],
+            "moduleId": "M01"
+          },
+          {
+            "kind": "ANY_ANSWER_ID",
+            "answerIds": [
+              "Q1_A2",
+              "Q1_A3",
+              "Q1_A4",
+              "Q1_A5"
+            ],
+            "moduleId": "M02"
+          },
+          {
+            "kind": "ANY_ANSWER_ID",
+            "answerIds": [
+              "Q1_A6"
+            ],
+            "moduleId": "M10"
+          }
+        ],
+        "resultPrimaryCount": 1
+      }
     }
   ],
-  "examples": [
+  "documentationExamples": [
     {
       "stableId": "E01",
-      "selectedAnswers": "Ещё не искал; не понимаю, куда двигаться; не хватает опыта; хочу выбрать направление",
-      "resultingModules": "M01 → M03 → M04",
+      "inputSummary": "Ещё не искал; не понимаю, куда двигаться; не хватает опыта; хочу выбрать направление",
+      "expectedModuleSummary": "M01 → M03 → M04",
       "primaryFocus": "Выбор направления",
       "stepsSummary": "Сравнить роли → выбрать гипотезу → собрать первый доказуемый кейс.",
-      "recommendationsSummary": "Карьерная консультация; Факультетские активности; Сверка с рынком"
+      "recommendationsSummary": "Карьерная консультация; Факультетские активности; Сверка с рынком",
+      "sortOrder": 1,
+      "active": true
     },
     {
       "stableId": "E02",
-      "selectedAnswers": "Активно откликаюсь; сложно найти вакансии; почти нет приглашений; хочу найти работу",
-      "resultingModules": "M02 → M05 → M08",
+      "inputSummary": "Активно откликаюсь; сложно найти вакансии; почти нет приглашений; хочу найти работу",
+      "expectedModuleSummary": "M02 → M05 → M08",
       "primaryFocus": "Поиск возможностей",
       "stepsSummary": "Расширить каналы → адаптировать резюме → считать конверсию откликов.",
-      "recommendationsSummary": "Дайджесты и подборки; Мероприятия; Трекер поиска"
+      "recommendationsSummary": "Дайджесты и подборки; Мероприятия; Трекер поиска",
+      "sortOrder": 2,
+      "active": true
     },
     {
       "stableId": "E03",
-      "selectedAnswers": "Прохожу отборы; сложно собеседование; сложно тестовое",
-      "resultingModules": "M06 → M07",
+      "inputSummary": "Прохожу отборы; сложно собеседование; сложно тестовое",
+      "expectedModuleSummary": "M06 → M07",
       "primaryFocus": "Собеседование",
       "stepsSummary": "Самопрезентация → 6–8 историй → мок-интервью; отдельно — шаблон тестового.",
-      "recommendationsSummary": "Карьерная консультация; Мероприятия; Тренировочное собеседование"
+      "recommendationsSummary": "Карьерная консультация; Мероприятия; Тренировочное собеседование",
+      "sortOrder": 3,
+      "active": true
     },
     {
       "stableId": "E04",
-      "selectedAnswers": "Есть актуальное резюме; откликаюсь, но не получаю приглашений",
-      "resultingModules": "M05 → M02",
+      "inputSummary": "Есть актуальное резюме; откликаюсь, но не получаю приглашений",
+      "expectedModuleSummary": "M05 → M02",
       "primaryFocus": "Резюме и отклик",
       "stepsSummary": "Не создавать резюме заново: аудит релевантности → адаптация → проверка конверсии по каналам.",
-      "recommendationsSummary": "«Резюме от ИТМО»; Мероприятия; Аудит резюме под вакансию"
+      "recommendationsSummary": "«Резюме от ИТМО»; Мероприятия; Аудит резюме под вакансию",
+      "sortOrder": 4,
+      "active": true
     },
     {
       "stableId": "E05",
-      "selectedAnswers": "Уже работаю; хочу развиваться; не понимаю, какие навыки усиливать; важна сильная команда",
-      "resultingModules": "M10 → M04",
+      "inputSummary": "Уже работаю; хочу развиваться; не понимаю, какие навыки усиливать; важна сильная команда",
+      "expectedModuleSummary": "M10 → M04",
       "primaryFocus": "Развитие во время учёбы",
       "stepsSummary": "Цель на 6–12 месяцев → проект с большей ответственностью → два приоритетных навыка.",
-      "recommendationsSummary": "Клубы; Факультетские активности; План на семестр"
+      "recommendationsSummary": "Клубы; Факультетские активности; План на семестр",
+      "sortOrder": 5,
+      "active": true
     },
     {
       "stableId": "E06",
-      "selectedAnswers": "Хочу попробовать предпринимательство; идеи пока нет; важны самостоятельность и развитие; 2–3 часа в неделю",
-      "resultingModules": "M11 → M10",
+      "inputSummary": "Хочу попробовать предпринимательство; идеи пока нет; важны самостоятельность и развитие; 2–3 часа в неделю",
+      "expectedModuleSummary": "M11 → M10",
       "primaryFocus": "Предпринимательство",
       "stepsSummary": "Выбрать 2–3 знакомые проблемные области → провести 5 интервью → выбрать одну гипотезу для теста.",
-      "recommendationsSummary": "Мероприятия; Клубы; Интервью с потенциальными пользователями"
+      "recommendationsSummary": "Мероприятия; Клубы; Интервью с потенциальными пользователями",
+      "sortOrder": 6,
+      "active": true
     },
     {
       "stableId": "E07",
-      "selectedAnswers": "Есть идея; проверяю спрос; сложно найти первых клиентов; 4–6 часов в неделю",
-      "resultingModules": "M11",
+      "inputSummary": "Есть идея; проверяю спрос; сложно найти первых клиентов; 4–6 часов в неделю",
+      "expectedModuleSummary": "M11",
       "primaryFocus": "Предпринимательство",
       "stepsSummary": "Уточнить сегмент → провести тест спроса → получить первые измеримые сигналы и решить, что менять.",
-      "recommendationsSummary": "Мероприятия; Минимальный тест спроса; Черновик бизнес-модели"
+      "recommendationsSummary": "Мероприятия; Минимальный тест спроса; Черновик бизнес-модели",
+      "sortOrder": 7,
+      "active": true
     }
   ],
   "editingInstructions": [

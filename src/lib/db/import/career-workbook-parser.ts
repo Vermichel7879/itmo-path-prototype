@@ -3,6 +3,11 @@ import { readFile } from "node:fs/promises";
 import { basename } from "node:path";
 
 import {
+  createModifierOperation,
+  createTypedEngineRules,
+  type ResultAssemblySection,
+} from "../config/typed-rules";
+import {
   type CareerImport,
   validateCareerImport,
 } from "./import-model";
@@ -196,7 +201,7 @@ export async function parseCareerWorkbook(filePath: string): Promise<CareerImpor
     }),
   );
 
-  const modules = matchingRows(sheets["03_Модули"], /^M\d+$/).map((row) => {
+  const modules = matchingRows(sheets["03_Модули"], /^M\d+$/).map((row, index) => {
     const steps = splitList(
       requiredValue("03_Модули", row, 3, "3 базовых шага"),
       "|",
@@ -214,6 +219,7 @@ export async function parseCareerWorkbook(filePath: string): Promise<CareerImpor
       checkpoint: requiredValue("03_Модули", row, 4, "Контрольная точка"),
       recommendationStableIds: splitList(value(row, 5)),
       constraints: value(row, 6),
+      sortOrder: index + 1,
       active: true,
     };
   });
@@ -246,6 +252,7 @@ export async function parseCareerWorkbook(filePath: string): Promise<CareerImpor
         url: null,
         status,
         tags: [],
+        priorityTags: [],
         active: status !== "INACTIVE",
       };
     });
@@ -277,13 +284,14 @@ export async function parseCareerWorkbook(filePath: string): Promise<CareerImpor
         5,
         "Эффект",
       );
+      const stableId = requiredValue(
+        "05_Правила_сборки",
+        row,
+        0,
+        "modifier_id",
+      );
       return {
-        stableId: requiredValue(
-          "05_Правила_сборки",
-          row,
-          0,
-          "modifier_id",
-        ),
+        stableId,
         triggerAnswerPattern: requiredValue(
           "05_Правила_сборки",
           row,
@@ -308,6 +316,7 @@ export async function parseCareerWorkbook(filePath: string): Promise<CareerImpor
           rawType === "pace"
             ? ({ kind: "pace", description } as const)
             : ({ kind: "copy", description } as const),
+        operation: createModifierOperation(stableId, description),
         active: true,
       };
     },
@@ -407,23 +416,60 @@ export async function parseCareerWorkbook(filePath: string): Promise<CareerImpor
       .filter((row) => value(row, 0) && value(row, 1))
       .map((row) => [value(row, 0), value(row, 1)]),
   );
-  const rules = matchingRows(sheets["05_Правила_сборки"], /^R\d+$/).map(
+  const sourceRules = matchingRows(sheets["05_Правила_сборки"], /^R\d+$/).map(
     (row) => ({
       id: requiredValue("05_Правила_сборки", row, 0, "rule_id"),
       title: requiredValue("05_Правила_сборки", row, 1, "Блок"),
       content: requiredValue("05_Правила_сборки", row, 2, "Правило"),
     }),
   );
-  const examples = matchingRows(sheets["06_Примеры"], /^E\d+$/).map(
-    (row) => ({
+  const resultSectionIds = [
+    "TITLE",
+    "CURRENT_POINT",
+    "PRIORITIES",
+    "PRIMARY_STEPS",
+    "SUPPORT_MODULES",
+    "RECOMMENDATIONS",
+    "PACE",
+    "CHECKPOINT",
+    "DISCLAIMER",
+  ] as const;
+  const resultAssemblySections = sheets["05_Правила_сборки"].rows
+    .filter((row) => /^\d+$/.test(value(row, 0)))
+    .map((row, index) => {
+      const stableId = resultSectionIds[index];
+      if (!stableId) {
+        throw new Error("05_Правила_сборки: ожидаются ровно 9 блоков результата");
+      }
+      return {
+        stableId,
+        title: requiredValue("05_Правила_сборки", row, 1, "Блок PDF"),
+        template: requiredValue("05_Правила_сборки", row, 2, "Шаблон"),
+        guidance: requiredValue("05_Правила_сборки", row, 3, "Комментарий"),
+        sortOrder: integerValue("05_Правила_сборки", row, 0, "Порядок"),
+      } satisfies ResultAssemblySection;
+    });
+  const sourceSha256 = createHash("sha256")
+    .update(sourceBuffer)
+    .digest("hex")
+    .toUpperCase();
+  const engineRules = createTypedEngineRules({
+    sourceSha256,
+    sourceRules,
+    resultAssemblySections,
+  });
+  const documentationExamples = matchingRows(
+    sheets["06_Примеры"],
+    /^E\d+$/,
+  ).map((row, index) => ({
       stableId: requiredValue("06_Примеры", row, 0, "example_id"),
-      selectedAnswers: requiredValue(
+      inputSummary: requiredValue(
         "06_Примеры",
         row,
         1,
         "Выбранные ответы",
       ),
-      resultingModules: requiredValue(
+      expectedModuleSummary: requiredValue(
         "06_Примеры",
         row,
         2,
@@ -437,8 +483,9 @@ export async function parseCareerWorkbook(filePath: string): Promise<CareerImpor
         5,
         "Пример рекомендаций",
       ),
-    }),
-  );
+      sortOrder: index + 1,
+      active: true,
+    }));
   const editingInstructions = sheets["08_Как_редактировать"].rows
     .filter((row) => row.rowNumber >= 2 && row.rowNumber <= 11 && value(row, 0))
     .map((row) => ({
@@ -452,7 +499,7 @@ export async function parseCareerWorkbook(filePath: string): Promise<CareerImpor
   return validateCareerImport({
     source: {
       fileName: basename(filePath),
-      sha256: createHash("sha256").update(sourceBuffer).digest("hex").toUpperCase(),
+      sha256: sourceSha256,
       workbookVersion: readme["Версия"] ?? "unknown",
       recognizedSheets: [...REQUIRED_CAREER_SHEETS],
       readme,
@@ -466,8 +513,8 @@ export async function parseCareerWorkbook(filePath: string): Promise<CareerImpor
     moduleRecommendations,
     entrepreneurStages,
     entrepreneurChallenges,
-    rules,
-    examples,
+    engineRules,
+    documentationExamples,
     editingInstructions,
   });
 }
@@ -482,8 +529,8 @@ export interface ImportSummary {
   modifiers: number;
   entrepreneurStages: number;
   entrepreneurChallenges: number;
-  rules: number;
-  examples: number;
+  engineRules: number;
+  documentationExamples: number;
 }
 
 export function summarizeCareerImport(config: CareerImport): ImportSummary {
@@ -497,8 +544,8 @@ export function summarizeCareerImport(config: CareerImport): ImportSummary {
     modifiers: config.modifiers.length,
     entrepreneurStages: config.entrepreneurStages.length,
     entrepreneurChallenges: config.entrepreneurChallenges.length,
-    rules: config.rules.length,
-    examples: config.examples.length,
+    engineRules: config.engineRules.length,
+    documentationExamples: config.documentationExamples.length,
   };
 }
 
@@ -509,7 +556,9 @@ type ComparableCollection =
   | "modifiers"
   | "recommendations"
   | "entrepreneurStages"
-  | "entrepreneurChallenges";
+  | "entrepreneurChallenges"
+  | "engineRules"
+  | "documentationExamples";
 
 export type ImportDiff = Record<
   ComparableCollection,
@@ -528,6 +577,8 @@ export function diffCareerImports(
     "recommendations",
     "entrepreneurStages",
     "entrepreneurChallenges",
+    "engineRules",
+    "documentationExamples",
   ];
 
   return Object.fromEntries(
