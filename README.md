@@ -2,7 +2,7 @@
 
 Новый проект Центра карьеры ИТМО: короткая rule-based анкета, которая формирует карьерный фокус, ближайшие действия, ориентиры, темп и рекомендации.
 
-Текущий статус: завершены database foundation **PHASE 2** и typed rules configuration **PHASE 2.5**. Migration 0002 и ручные SQL upgrade/seed chunks применены в Supabase, Drizzle history содержит три записи, а единственный DRAFT проходит typed verification. PUBLISHED пока не создан. Frontend-сценарий PHASE 1 до начала PHASE 3 продолжает работать на mock-конфигурации.
+Текущий статус: завершена **PHASE 3**. В Supabase существуют один DRAFT и один immutable PUBLISHED; публичная анкета и результат работают через versioned PUBLISHED configuration, server-side validation и чистый typed rule engine R01–R17. Production runtime больше не использует mock-конфигурацию.
 
 ## Локальный запуск
 
@@ -19,7 +19,7 @@ npm run dev
 
 - `/` — landing;
 - `/questionnaire` — анкета Q1–Q8 и условные Q9–Q10;
-- `/result` — демонстрационный результат из mock rule layer.
+- `/result` — реальный `TrajectoryResult`, рассчитанный сервером для версии анкеты.
 
 ## Проверки
 
@@ -57,7 +57,7 @@ Runtime использует только `TRANSACTION_DATABASE_URL`; client р�
 1. Локальный и Vercel runtime получают Transaction pooler URI только через `TRANSACTION_DATABASE_URL`.
 2. Direct/Session URI могут задаваться как `DIRECT_DATABASE_URL`/`DATABASE_URL` только для контролируемых migration workflows.
 3. Одноразовые SQL Editor инструкции сохранены в `scripts/supabase-bootstrap/` и `scripts/supabase-seed/` для аудита и восстановления пустой базы.
-4. Текущий DRAFT проверяется командой `npm run db:verify`; PUBLISHED и admin user в PHASE 2 не создаются.
+4. PUBLISHED проверяется read-only командами `npm run db:verify-published` и `npm run test:db:published`; initial publish повторно запускать нельзя.
 
 Upgrade PHASE 2.5 уже применён: файлы из `scripts/supabase-upgrades/0002-typed-rules/`, затем `scripts/supabase-seed-rules/` были выполнены вручную и проверены. Эти одноразовые chunks повторно запускать нельзя; они сохранены для аудита и восстановления новой пустой базы.
 
@@ -82,4 +82,10 @@ Upgrade PHASE 2.5 уже применён: файлы из `scripts/supabase-upg
 - Zod validation;
 - read-only OOXML importer и immutable seed snapshot.
 
-Production rule engine, admin UI/auth, публикация draft, PDF и реальные opportunities остаются в следующих фазах.
+Admin UI/auth, последующие publish workflows, PDF и реальные opportunities остаются в следующих фазах.
+
+## Public runtime PHASE 3
+
+`GET /api/questionnaire` возвращает безопасный DTO без weights, modifiers и engine rules. `POST /api/trajectory` принимает `configVersionId` и плоский список stable answer IDs, повторно проверяет required/min/max/conditional вопросы на сервере и возвращает только `TrajectoryResult`.
+
+Repository допускает только запись со статусом PUBLISHED. Из-за ограничения Transaction pooler на большие JSON payload он проверяет структуру, counts, source SHA-256 и immutable PUBLISHED snapshot скалярными SQL-условиями, после чего разрешает только совпадающий versioned production artifact `src/lib/db/seed/career-config-v2.json`. Несовпадение версии или hash приводит к fail-closed состоянию; fallback на DRAFT или mock отсутствует.

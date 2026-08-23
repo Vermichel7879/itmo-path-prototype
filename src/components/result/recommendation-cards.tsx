@@ -1,6 +1,6 @@
-import type { CareerRecommendation } from "@/types/career";
+import type { PublicTrajectoryRecommendation } from "@/lib/rule-engine/types";
 
-export function RecommendationCards({ recommendations }: { recommendations: CareerRecommendation[] }) {
+export function RecommendationCards({ recommendations }: { recommendations: PublicTrajectoryRecommendation[] }) {
   return (
     <section aria-labelledby="recommendations-title" className="result-section">
       <p className="eyebrow">Рекомендации</p>
@@ -19,9 +19,7 @@ export function RecommendationCards({ recommendations }: { recommendations: Care
               <span className="mt-6 text-sm font-semibold text-blue-700 group-open:hidden">Подробнее →</span>
               <span className="mt-6 hidden text-sm font-semibold text-blue-700 group-open:inline">Свернуть ↑</span>
             </summary>
-            <p className="mt-4 border-t border-blue-100 pt-4 text-sm leading-6 text-zinc-700">
-              {recommendation.detail}
-            </p>
+            {recommendation.url ? <a className="mt-4 inline-block border-t border-blue-100 pt-4 text-sm font-semibold text-blue-700" href={recommendation.url} target="_blank" rel="noreferrer">Открыть ресурс →</a> : null}
           </details>
         ))}
       </div>

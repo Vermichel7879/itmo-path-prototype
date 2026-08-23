@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Твоя карьерная траектория — ИТМО",
 };
 
-export default function ResultPage() {
-  return <ResultClient />;
+export default async function ResultPage({ searchParams }: { searchParams: Promise<{ configVersionId?: string }> }) {
+  const { configVersionId } = await searchParams;
+  return <ResultClient configVersionId={configVersionId ?? null} />;
 }

@@ -5,6 +5,7 @@ export const metadata: Metadata = {
   title: "Анкета — Карьерная траектория ИТМО",
 };
 
-export default function QuestionnairePage() {
-  return <QuestionnaireClient />;
+export default async function QuestionnairePage({ searchParams }: { searchParams: Promise<{ configVersionId?: string }> }) {
+  const { configVersionId } = await searchParams;
+  return <QuestionnaireClient initialConfigVersionId={configVersionId ?? null} />;
 }

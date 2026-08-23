@@ -1,0 +1,106 @@
+import "server-only";
+
+import { and, desc, eq, sql } from "drizzle-orm";
+
+import { getDatabase } from "../client";
+import { validateInitialPublishSnapshot } from "../publish/publish-validation";
+import { configVersions } from "../schema";
+import productionCareerConfig from "../seed/career-config-v2.json";
+
+export interface PublishedCareerConfigRecord {
+  id: string;
+  versionNumber: number;
+  publishedAt: Date;
+  snapshot: ReturnType<typeof validateInitialPublishSnapshot>;
+}
+
+const globalPublishedCache = globalThis as typeof globalThis & {
+  publishedCareerConfigCache?: Map<string, PublishedCareerConfigRecord>;
+};
+const publishedCache = globalPublishedCache.publishedCareerConfigCache ?? new Map<string, PublishedCareerConfigRecord>();
+globalPublishedCache.publishedCareerConfigCache = publishedCache;
+
+async function parsePublishedVersion(
+  version: {
+    id: string;
+    versionNumber: number;
+    publishedAt: Date | null;
+    sourceSha256: string | null;
+    snapshotSourceSha256: string | null;
+    snapshotValid: boolean;
+    rulesComplete: boolean;
+  } | undefined,
+): Promise<PublishedCareerConfigRecord | null> {
+  if (!version) return null;
+  if (!version.publishedAt) {
+    throw new Error("PUBLISHED_CONFIG_INVALID reason=MISSING_PUBLISHED_AT");
+  }
+  if (!version.snapshotValid || !version.rulesComplete || !version.sourceSha256 || version.snapshotSourceSha256 !== version.sourceSha256) {
+    throw new Error("PUBLISHED_CONFIG_INVALID reason=SNAPSHOT_METADATA");
+  }
+  const snapshot = validateInitialPublishSnapshot(productionCareerConfig);
+  if (snapshot.source.sha256 !== version.sourceSha256) {
+    throw new Error("PUBLISHED_CONFIG_INVALID reason=ARTIFACT_VERSION_MISMATCH");
+  }
+  return {
+    ...version,
+    publishedAt: version.publishedAt,
+    snapshot: validateInitialPublishSnapshot(snapshot),
+  };
+}
+
+const publishedSelection = {
+  id: configVersions.id,
+  versionNumber: configVersions.versionNumber,
+  publishedAt: configVersions.publishedAt,
+  sourceSha256: configVersions.sourceSha256,
+  snapshotSourceSha256: sql<string | null>`${configVersions.snapshot} -> 'source' ->> 'sha256'`,
+  snapshotValid: sql<boolean>`
+    jsonb_typeof(${configVersions.snapshot}) = 'object'
+    and jsonb_array_length(${configVersions.snapshot} -> 'questions') = 10
+    and jsonb_array_length(${configVersions.snapshot} -> 'answers') = 75
+    and jsonb_array_length(${configVersions.snapshot} -> 'mappings') = 52
+    and jsonb_array_length(${configVersions.snapshot} -> 'modules') = 11
+    and jsonb_array_length(${configVersions.snapshot} -> 'modifiers') = 12
+    and jsonb_array_length(${configVersions.snapshot} -> 'recommendations') = 22
+    and jsonb_array_length(${configVersions.snapshot} -> 'moduleRecommendations') = 51
+    and jsonb_array_length(${configVersions.snapshot} -> 'entrepreneurStages') = 5
+    and jsonb_array_length(${configVersions.snapshot} -> 'entrepreneurChallenges') = 8
+    and jsonb_array_length(${configVersions.snapshot} -> 'engineRules') = 17
+    and jsonb_array_length(${configVersions.snapshot} -> 'documentationExamples') = 7
+  `,
+  rulesComplete: sql<boolean>`
+    (select array_agg(item ->> 'stableId' order by item ->> 'stableId')
+     from jsonb_array_elements(${configVersions.snapshot} -> 'engineRules') item) = array[
+      'R01','R02','R03','R04','R05','R06','R07','R08','R09',
+      'R10','R11','R12','R13','R14','R15','R16','R17'
+    ]
+  `,
+};
+
+export async function getLatestPublishedCareerConfig() {
+  const [version] = await getDatabase()
+    .select(publishedSelection)
+    .from(configVersions)
+    .where(eq(configVersions.status, "PUBLISHED"))
+    .orderBy(desc(configVersions.publishedAt), desc(configVersions.versionNumber))
+    .limit(1);
+  const parsed = await parsePublishedVersion(version);
+  if (parsed) publishedCache.set(parsed.id, parsed);
+  return parsed;
+}
+
+export async function getPublishedCareerConfigById(id: string) {
+  const cached = publishedCache.get(id);
+  if (cached) return cached;
+  const [version] = await getDatabase()
+    .select(publishedSelection)
+    .from(configVersions)
+    .where(
+      and(eq(configVersions.id, id), eq(configVersions.status, "PUBLISHED")),
+    )
+    .limit(1);
+  const parsed = await parsePublishedVersion(version);
+  if (parsed) publishedCache.set(parsed.id, parsed);
+  return parsed;
+}

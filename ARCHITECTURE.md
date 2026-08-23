@@ -2,7 +2,7 @@
 
 ## 1. Статус документа
 
-Документ обновлён по итогам завершения PHASE 2.5. Frontend PHASE 1, database foundation PHASE 2 и typed rules configuration PHASE 2.5 реализованы; migration 0002 и typed seed применены и read-only проверены в Supabase. Production rule engine, публикация, admin UI, auth и PDF остаются границами следующих фаз.
+Документ обновлён по итогам PHASE 3. PUBLISHED repository, safe questionnaire DTO, server validation, rule engine R01–R17 и публичный UI работают на одной versioned конфигурации. Admin UI, auth и PDF остаются границами следующих фаз.
 
 ## 2. Назначение и ограничения
 
@@ -115,7 +115,9 @@ typed immutable PUBLISHED snapshot
 server-side rule engine
 ```
 
-Текущий live state содержит один typed DRAFT и ни одного PUBLISHED; сам publish workflow остаётся следующей фазой.
+Текущий live state содержит один typed DRAFT и один immutable PUBLISHED. Initial publish завершён через SQL Editor и повторно не выполняется.
+
+Transaction pooler стабильно выполняет scalar JSON-проверки, но закрывает соединение при возврате полного JSONB snapshot. Поэтому PUBLISHED repository работает fail-closed: проверяет в БД status, version, counts, R01–R17 и source SHA-256 snapshot, затем сопоставляет их с versioned production artifact. Artifact не является fallback: при отсутствии PUBLISHED или несовпадении hash публичные endpoints недоступны. DRAFT и mock runtime никогда не читаются.
 
 ## 8. Rule engine
 

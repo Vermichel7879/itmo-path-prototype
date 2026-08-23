@@ -43,8 +43,11 @@ const fixture = (
   ...extra,
 });
 
-// Test-only deterministic inputs for the future PHASE 3 engine. They are not
+// Test-only deterministic inputs for the PHASE 3 engine. They are not
 // production configuration and must never be loaded by public runtime code.
+// Support expectations follow R04 + R05 literally: ranked eligible modules
+// after primary, score >= supportThreshold, capped at maxSupportCount. Fixtures
+// verify that business logic; they are not a separate source of business rules.
 export const machineRegressionFixtures: MachineRegressionFixture[] = [
   fixture(
     "T01",
@@ -59,26 +62,28 @@ export const machineRegressionFixtures: MachineRegressionFixture[] = [
     ["q2-tie-break"],
     ["Q1_A1", "Q2_A1", "Q3_A2", "Q5_A1"],
     "M01",
+    ["M02"],
   ),
   fixture(
     "T03",
     ["q3-tie-break"],
     ["Q1_A1", "Q2_A2", "Q2_A3", "Q3_A2", "Q5_A1", "Q5_A5"],
     "M02",
+    ["M01"],
   ),
   fixture(
     "T04",
     ["q1-tie-break"],
     ["Q1_A1", "Q2_A3", "Q3_A1", "Q3_A3", "Q5_A3"],
     "M01",
-    ["M03"],
+    ["M03", "M02"],
   ),
   fixture(
     "T05",
     ["q5-tie-break"],
     ["Q5_A1", "Q5_A5"],
     "M01",
-    [],
+    ["M02"],
     {
       rankingScoresOverride: {
         M01: { total: 8, Q2: 3, Q3: 2, Q1: 1, Q5: 2 },
@@ -219,6 +224,6 @@ export const machineRegressionFixtures: MachineRegressionFixture[] = [
     ["recommendation-dedupe"],
     ["Q1_A6", "Q2_A2", "Q3_A4", "Q5_A5"],
     "M01",
-    ["M04"],
+    ["M04", "M10"],
   ),
 ];

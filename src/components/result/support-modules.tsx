@@ -1,6 +1,6 @@
-import type { CareerModule } from "@/types/career";
+import type { PublicTrajectoryModule } from "@/lib/rule-engine/types";
 
-export function SupportModules({ modules }: { modules: CareerModule[] }) {
+export function SupportModules({ modules }: { modules: PublicTrajectoryModule[] }) {
   if (modules.length === 0) return null;
 
   return (

@@ -1,10 +1,14 @@
-import type { AnswerId, CareerQuestion } from "@/types/career";
+interface QuestionnaireSelectionRules {
+  type: "single" | "multi";
+  minSelect: number;
+  maxSelect: number;
+}
 
 export function toggleQuestionAnswer(
-  question: CareerQuestion,
-  current: AnswerId[],
-  answerId: AnswerId,
-): AnswerId[] {
+  question: QuestionnaireSelectionRules,
+  current: string[],
+  answerId: string,
+): string[] {
   if (question.type === "single") {
     return [answerId];
   }
@@ -20,6 +24,6 @@ export function toggleQuestionAnswer(
   return [...current, answerId];
 }
 
-export function canContinue(question: CareerQuestion, selected: AnswerId[]) {
+export function canContinue(question: QuestionnaireSelectionRules, selected: string[]) {
   return selected.length >= question.minSelect && selected.length <= question.maxSelect;
 }

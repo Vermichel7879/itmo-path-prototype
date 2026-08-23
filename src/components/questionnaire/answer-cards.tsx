@@ -1,9 +1,9 @@
-import type { AnswerId, CareerQuestion } from "@/types/career";
+import type { PublicQuestionnaireQuestion } from "@/lib/public-config/questionnaire";
 
 interface AnswerCardsProps {
-  question: CareerQuestion;
-  selected: AnswerId[];
-  onToggle: (answerId: AnswerId) => void;
+  question: PublicQuestionnaireQuestion;
+  selected: string[];
+  onToggle: (answerId: string) => void;
 }
 
 function CheckIcon() {

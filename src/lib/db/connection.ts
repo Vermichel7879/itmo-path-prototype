@@ -6,7 +6,7 @@ import * as schema from "./schema";
 
 export function createDatabaseConnection(databaseUrl: string) {
   const client = postgres(databaseUrl, {
-    max: 5,
+    max: 1,
     prepare: false,
   });
   return {

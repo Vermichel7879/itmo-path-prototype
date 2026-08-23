@@ -1,6 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { questionById } from "@/config/mock-career-config";
+import seed from "@/lib/db/seed/career-config-v2.json";
+import { careerImportSchema } from "@/lib/db/import/import-model";
+import { buildPublicQuestionnaireDTO } from "@/lib/public-config/questionnaire";
 import { canContinue, toggleQuestionAnswer } from "./answers";
+
+const questionById = Object.fromEntries(
+  buildPublicQuestionnaireDTO("test", careerImportSchema.parse(seed)).questions.map((question) => [question.id, question]),
+);
 
 describe("questionnaire answer rules", () => {
   it("does not add a fourth answer to Q2 after max-select", () => {

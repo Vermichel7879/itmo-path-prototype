@@ -18,7 +18,10 @@
     "db:seed": "tsx scripts/seed-career-config.ts",
     "db:seed:generate": "tsx scripts/export-career-seed.ts",
     "db:seed:rules:generate": "tsx scripts/export-typed-rule-sql.ts",
-    "db:verify": "tsx scripts/verify-database-import.ts"
+    "db:verify": "tsx scripts/verify-database-import.ts",
+    "db:publish-initial": "tsx scripts/publish-initial-career-config.ts",
+    "db:verify-published": "tsx scripts/verify-published-career-config.ts",
+    "test:db:published": "tsx scripts/test-published-integration.ts"
   },
   "dependencies": {
     "@next/env": "^16.3.2",

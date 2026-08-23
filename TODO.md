@@ -60,17 +60,17 @@
 - [x] Подтвердить, что PUBLISHED отсутствует; publish workflow остаётся границей следующей фазы.
 - [x] STOP до отдельного разрешения на PHASE 3.
 
-## PHASE 3 — rule engine и реальные данные
+## PHASE 3 — rule engine и реальные данные — завершена
 
-- [ ] Реализовать чистый typed rule engine отдельно от UI.
-- [ ] Реализовать weights, tie-break Q2 → Q3 → Q1 → Q5 и thresholds.
-- [ ] Реализовать ограничения M09/M11 и fallback.
-- [ ] Реализовать modifiers Q4/Q6/Q7/Q8 и Q9/Q10 для M11.
-- [ ] Исключить дубли рекомендаций и внутренние scores из public result.
-- [ ] Подключить published questionnaire и реальный result page.
-- [ ] Превратить Excel-примеры E01–E07 в regression fixtures/tests.
-- [ ] Пройти quality gates.
-- [ ] STOP и запросить разрешение на PHASE 4.
+- [x] Реализовать чистый typed rule engine отдельно от UI.
+- [x] Реализовать weights, tie-break Q2 → Q3 → Q1 → Q5 и thresholds.
+- [x] Реализовать ограничения M09/M11 и fallback.
+- [x] Реализовать modifiers Q4/Q6/Q7/Q8 и Q9/Q10 для M11.
+- [x] Исключить дубли рекомендаций и внутренние scores из public result.
+- [x] Подключить published questionnaire и реальный result page.
+- [x] Выполнять machine regression fixtures T01–T31 против настоящего engine; E01–E07 оставить documentation examples.
+- [x] Пройти quality gates и read-only PUBLISHED integration.
+- [x] STOP и запросить разрешение на PHASE 4.
 
 ## PHASE 4 — admin panel
 
