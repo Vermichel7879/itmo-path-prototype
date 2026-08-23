@@ -40,6 +40,9 @@
 - [x] Создать read-only importer текущего xlsx в draft.
 - [x] Добавить dry-run/diff: added, changed, removed.
 - [x] Добавить seed без runtime-зависимости от Excel.
+- [x] Применить schema и Drizzle history через проверяемый chunked bootstrap.
+- [x] Загрузить и проверить единственный DRAFT через chunked validated seed.
+- [x] Зафиксировать Transaction pooler как единственный runtime connection.
 - [x] Добавить tests на schema, importer и draft/published separation.
 - [x] Пройти quality gates.
 - [x] STOP и запросить разрешение на PHASE 3.

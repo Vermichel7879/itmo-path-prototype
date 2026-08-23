@@ -1,3 +1,5 @@
+import "./load-project-environment";
+
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 

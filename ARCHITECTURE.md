@@ -91,7 +91,7 @@ source/                    # исходные материалы, read-only
 
 Importer читает обязательные листы XLSX напрямую как OOXML ZIP/XML, преобразует их в Zod-валидированную промежуточную модель, проверяет стабильные ID и ссылки и показывает diff. `db:import:dry` не импортирует database client и работает без `DATABASE_URL`; режим записи заменяет только единственный draft внутри транзакции. Повторный импорт никогда не перезаписывает published snapshot.
 
-Checked-in `career-config-v2.json` содержит тот же валидированный snapshot и позволяет выполнить seed без runtime-доступа к `source/`. Файл Excel остаётся read-only и не попадает в Git.
+Checked-in `career-config-v2.json` содержит тот же валидированный snapshot и позволяет выполнить seed без runtime-доступа к `source/`. Первоначальный DRAFT загружен dependency-ordered SQL chunks из `scripts/supabase-seed/`; каждый chunk атомарен и защищён от случайного повторного запуска. Файл Excel остаётся read-only и не попадает в Git.
 
 ## 7. Модель данных
 
@@ -140,7 +140,7 @@ calculateTrajectory(config: PublishedConfig, answerIds: AnswerId[]): TrajectoryR
 
 Существующий Git remote и существующая Vercel-привязка сохраняются. Новый Vercel project не создаётся. Production получает Supabase connection string и secrets только через environment variables. Миграции выполняются отдельным контролируемым шагом до выкладки приложения.
 
-Для migrations используется Direct connection или Session pooler; для serverless runtime — Transaction pooler. Реальные `.env*` игнорируются, а `.env.example` содержит только пустые placeholders.
+Runtime приложения использует только `TRANSACTION_DATABASE_URL` через `postgres.js` с `prepare: false`. `DIRECT_DATABASE_URL` и `DATABASE_URL` относятся только к migration tooling и runtime-кодом не используются. Первоначальный bootstrap выполнен атомарными SQL Editor chunks из `scripts/supabase-bootstrap/`; они сохраняют обычный Drizzle history format и не заменяют последующий migration workflow. Реальные `.env*` игнорируются, а `.env.example` содержит только пустые placeholders.
 
 ## 12. Отложенные решения
 

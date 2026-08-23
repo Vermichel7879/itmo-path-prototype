@@ -1,16 +1,19 @@
+import "./load-project-environment";
+
 import { resolve } from "node:path";
 
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 
-import { createCommandDatabaseConnection } from "../src/lib/db/connection";
+import { createDatabaseConnection } from "../src/lib/db/connection";
+import { requireMigrationDatabaseUrl } from "../src/lib/db/environment";
 
 async function main() {
-  const connection = createCommandDatabaseConnection();
+  const connection = createDatabaseConnection(requireMigrationDatabaseUrl());
   try {
     await migrate(connection.db, { migrationsFolder: resolve("drizzle") });
     console.log("Database migrations applied.");
   } finally {
-    await connection.close();
+    await connection.client.end({ timeout: 5 });
   }
 }
 

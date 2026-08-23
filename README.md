@@ -2,7 +2,7 @@
 
 Новый проект Центра карьеры ИТМО: короткая rule-based анкета, которая формирует карьерный фокус, ближайшие действия, ориентиры, темп и рекомендации.
 
-Текущий статус: завершена database foundation **PHASE 2**. Frontend-сценарий PHASE 1 продолжает работать на mock-конфигурации, а PostgreSQL schema, migrations, server-only Drizzle layer и read-only Excel importer уже подготовлены. Внешняя база пока не подключена и migrations никуда не применялись.
+Текущий статус: завершена database foundation **PHASE 2**. Supabase schema применена, Drizzle history содержит две migration records, а валидированный XLSX snapshot загружен в единственный DRAFT. Frontend-сценарий PHASE 1 до начала PHASE 3 продолжает работать на mock-конфигурации.
 
 ## Локальный запуск
 
@@ -40,24 +40,22 @@ npm run db:import:dry
 ```bash
 npm run db:generate      # генерирует migration из schema, не подключаясь к БД
 npm run db:import:dry    # читает и валидирует XLSX, ничего не записывает
-npm run db:migrate       # требует DATABASE_URL и применяет migrations
-npm run db:import        # требует DATABASE_URL и заменяет только DRAFT
-npm run db:seed          # требует DATABASE_URL, использует checked-in JSON snapshot
+npm run db:migrate       # migration-only: DIRECT_DATABASE_URL, затем DATABASE_URL
+npm run db:import        # runtime connection: TRANSACTION_DATABASE_URL
+npm run db:seed          # runtime connection: TRANSACTION_DATABASE_URL
+npm run db:verify        # read-only проверка schema и DRAFT
 ```
 
-`db:migrate`, `db:import` и `db:seed` нельзя запускать без созданного Supabase и осознанно заданного `DATABASE_URL`. Published-конфигурация импортом не перезаписывается.
+Runtime использует только `TRANSACTION_DATABASE_URL`; client работает с `prepare: false`. `DIRECT_DATABASE_URL` и `DATABASE_URL` зарезервированы для migration tooling и runtime-приложением не читаются. Published-конфигурация импортом не перезаписывается.
 
-## Как подключить Supabase после PHASE 2
+## Supabase после PHASE 2
 
-Сейчас выполнять эти шаги не требуется. Когда будет принято решение подключить базу:
+Первоначальные schema и DRAFT уже загружены. Повторно запускать migrations, bootstrap или seed chunks в этой базе нельзя.
 
-1. Создать новый project в Supabase Dashboard и сохранить database password в менеджере паролей.
-2. В проекте нажать **Connect**. Для локальных migrations выбрать Direct connection, если доступен IPv6, либо Session pooler для IPv4-сети.
-3. Скопировать URI и поместить его только в локальный `.env.local` как `DATABASE_URL=...`. Файл не коммитить.
-4. Запустить `npm run db:migrate`. Команда сама применит подготовленные migrations; вручную писать SQL не нужно.
-5. Запустить `npm run db:import` для создания DRAFT из XLSX либо `npm run db:seed` для загрузки checked-in snapshot без доступа к `/source`.
-6. Проверить draft до публикации. Механизм публикации появится в PHASE 4; текущий importer не создаёт PUBLISHED сам.
-7. Для будущего Vercel runtime использовать Transaction pooler URI в переменной `DATABASE_URL`; application client уже отключает prepared statements.
+1. Локальный и Vercel runtime получают Transaction pooler URI только через `TRANSACTION_DATABASE_URL`.
+2. Direct/Session URI могут задаваться как `DIRECT_DATABASE_URL`/`DATABASE_URL` только для контролируемых migration workflows.
+3. Одноразовые SQL Editor инструкции сохранены в `scripts/supabase-bootstrap/` и `scripts/supabase-seed/` для аудита и восстановления пустой базы.
+4. Текущий DRAFT проверяется командой `npm run db:verify`; PUBLISHED и admin user в PHASE 2 не создаются.
 
 Шаблон переменных находится в `.env.example`. Все реальные `.env`, `.env.local` и `.env.production` игнорируются Git.
 

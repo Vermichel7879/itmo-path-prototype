@@ -9,15 +9,18 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "db:check-connection": "tsx scripts/check-database-connection.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx scripts/migrate-database.ts",
+    "db:migrate:transaction": "tsx scripts/migrate-database-transaction.ts",
     "db:import": "tsx scripts/import-career-config.ts --write",
     "db:import:dry": "tsx scripts/import-career-config.ts --dry-run",
     "db:seed": "tsx scripts/seed-career-config.ts",
-    "db:seed:generate": "tsx scripts/export-career-seed.ts"
+    "db:seed:generate": "tsx scripts/export-career-seed.ts",
+    "db:verify": "tsx scripts/verify-database-import.ts"
   },
   "dependencies": {
-    "dotenv": "^17.4.2",
+    "@next/env": "^16.3.2",
     "drizzle-orm": "^0.45.2",
     "fast-xml-parser": "^5.11.0",
     "fflate": "^0.8.3",

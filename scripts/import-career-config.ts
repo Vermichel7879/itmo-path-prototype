@@ -1,3 +1,5 @@
+import "./load-project-environment";
+
 import { resolve } from "node:path";
 
 import {

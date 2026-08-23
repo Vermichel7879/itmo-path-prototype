@@ -22,10 +22,28 @@ const adminSeedSchema = z
 export function requireDatabaseUrl(
   environment: NodeJS.ProcessEnv = process.env,
 ): string {
-  const result = postgresUrl.safeParse(environment.DATABASE_URL);
+  return requireTransactionDatabaseUrl(environment);
+}
+
+export function requireTransactionDatabaseUrl(
+  environment: NodeJS.ProcessEnv = process.env,
+): string {
+  const result = postgresUrl.safeParse(environment.TRANSACTION_DATABASE_URL);
   if (result.success) return result.data;
   throw new Error(
-    "DATABASE_URL не задан или некорректен. Создайте Supabase и добавьте PostgreSQL connection string в локальный .env.local; команда не выполняла подключение.",
+    "TRANSACTION_DATABASE_URL must contain a valid PostgreSQL connection string.",
+  );
+}
+
+export function requireMigrationDatabaseUrl(
+  environment: NodeJS.ProcessEnv = process.env,
+): string {
+  const result = postgresUrl.safeParse(
+    environment.DIRECT_DATABASE_URL ?? environment.DATABASE_URL,
+  );
+  if (result.success) return result.data;
+  throw new Error(
+    "DIRECT_DATABASE_URL or DATABASE_URL must contain a valid PostgreSQL connection string.",
   );
 }
 
