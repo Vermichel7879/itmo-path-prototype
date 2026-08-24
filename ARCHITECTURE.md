@@ -119,6 +119,12 @@ server-side rule engine
 
 Transaction pooler стабильно выполняет scalar JSON-проверки, но закрывает соединение при возврате полного JSONB snapshot. Поэтому PUBLISHED repository работает fail-closed: проверяет в БД status, version, counts, R01–R17 и source SHA-256 snapshot, затем сопоставляет их с versioned production artifact. Artifact не является fallback: при отсутствии PUBLISHED или несовпадении hash публичные endpoints недоступны. DRAFT и mock runtime никогда не читаются.
 
+### PHASE 4 schema и admin runtime
+
+Административный каталог `opportunities` должен быть частью конкретной версии конфигурации: иначе изменение записи через admin UI обходит DRAFT и нарушает изоляцию уже опубликованного результата. Migration `0003_workable_leopardon.sql` добавляет обязательный `config_version_id`, внешний ключ и version-scoped indexes. Та же migration добавляет `admin_login_attempts`, где для database-backed login throttle хранятся только HMAC-SHA-256 ключи username/IP, вычисленные с server-only secret, без исходных значений. Узкая read-only функция `read_published_config_snapshot_chunk` возвращает только PUBLISHED snapshot порциями до 4096 символов: новый publish сможет стать текущей public-конфигурацией без checked-in artifact и без копирования child rows, несмотря на ограничение Transaction pooler на крупный JSONB response.
+
+Upgrade из `scripts/supabase-upgrades/0003-phase4-admin/` применён и read-only проверен. Drizzle history содержит четыре записи. Admin runtime использует versioned opportunities и database-backed login throttle; public repository получает только PUBLISHED snapshots через chunk reader.
+
 ## 8. Rule engine
 
 Доменный API планируется в форме чистой функции:

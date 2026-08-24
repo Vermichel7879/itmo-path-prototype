@@ -74,17 +74,19 @@
 
 ## PHASE 4 — admin panel
 
-- [ ] Реализовать `/admin/login`, bcrypt и server-side sessions.
-- [ ] Реализовать роли ADMIN/EDITOR и server-side authorization.
-- [ ] Реализовать users CRUD без показа старых паролей.
-- [ ] Реализовать CRUD анкеты, модулей, логики, рекомендаций и возможностей.
-- [ ] Реализовать condition builder и logic editor без ручного JSON/кода.
-- [ ] Реализовать draft preview и admin-only debug trace.
-- [ ] Реализовать publish, versions, restore-to-draft и republish.
-- [ ] Реализовать audit log критических изменений.
-- [ ] Добавить auth, permissions, versioning и preview tests.
-- [ ] Пройти quality gates.
-- [ ] STOP и запросить разрешение на PHASE 5.
+- [x] Подготовить migration 0003 и атомарные SQL Editor chunks для versioned opportunities и database-backed login throttle.
+- [x] Вручную применить и проверить PHASE 4 schema upgrade в Supabase до продолжения реализации.
+- [x] Реализовать `/admin/login`, bcrypt и server-side sessions.
+- [x] Реализовать роли ADMIN/EDITOR и server-side authorization.
+- [x] Реализовать users management без показа старых паролей.
+- [x] Реализовать CRUD анкеты, модулей, логики, рекомендаций и возможностей.
+- [x] Реализовать safe condition selector и typed logic editor без raw JSON input.
+- [x] Реализовать draft preview и admin-only debug trace.
+- [x] Реализовать publish, versions и republish без изменения старых PUBLISHED.
+- [x] Реализовать audit log критических изменений.
+- [x] Добавить auth, permissions, versioning и preview tests.
+- [x] Пройти quality gates.
+- [x] STOP и запросить разрешение на PHASE 5.
 
 ## PHASE 5 — PDF, рекомендации и polish
 

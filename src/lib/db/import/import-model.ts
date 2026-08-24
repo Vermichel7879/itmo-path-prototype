@@ -105,6 +105,29 @@ export const moduleRecommendationImportSchema = z
   })
   .strict();
 
+export const opportunityImportSchema = z
+  .object({
+    stableId,
+    type: z.enum([
+      "EVENT",
+      "CLUB",
+      "FACULTY",
+      "PRACTICE",
+      "INTERNSHIP",
+      "OTHER",
+    ]),
+    title: nonEmptyText,
+    description: nonEmptyText,
+    url: z.url().nullable(),
+    startsAt: z.iso.datetime({ offset: true }).nullable(),
+    endsAt: z.iso.datetime({ offset: true }).nullable(),
+    validFrom: z.iso.datetime({ offset: true }).nullable(),
+    validTo: z.iso.datetime({ offset: true }).nullable(),
+    tags: z.array(nonEmptyText),
+    active: z.boolean(),
+  })
+  .strict();
+
 export const entrepreneurStageImportSchema = z
   .object({
     stableId,
@@ -189,6 +212,7 @@ export const careerImportSchema = z
     modifiers: z.array(modifierImportSchema),
     recommendations: z.array(recommendationImportSchema),
     moduleRecommendations: z.array(moduleRecommendationImportSchema),
+    opportunities: z.array(opportunityImportSchema).default([]),
     entrepreneurStages: z.array(entrepreneurStageImportSchema),
     entrepreneurChallenges: z.array(entrepreneurChallengeImportSchema),
     engineRules: z.array(engineRuleSchema),
@@ -221,6 +245,7 @@ export const careerImportSchema = z
     unique(config.modules, (item) => item.stableId, "modules");
     unique(config.modifiers, (item) => item.stableId, "modifiers");
     unique(config.recommendations, (item) => item.stableId, "recommendations");
+    unique(config.opportunities, (item) => item.stableId, "opportunities");
     unique(config.entrepreneurStages, (item) => item.stableId, "entrepreneurStages");
     unique(
       config.entrepreneurChallenges,

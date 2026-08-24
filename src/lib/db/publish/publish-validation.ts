@@ -16,7 +16,7 @@ const expectedCounts = {
 } as const;
 
 export function validateInitialPublishSnapshot(input: unknown): CareerImport {
-  const snapshot = validateCareerImport(input);
+  const snapshot = validatePublishableCareerSnapshot(input);
 
   for (const [key, expected] of Object.entries(expectedCounts)) {
     if (snapshot[key as keyof typeof expectedCounts].length !== expected) {
@@ -24,15 +24,16 @@ export function validateInitialPublishSnapshot(input: unknown): CareerImport {
     }
   }
 
-  const moduleOrder = [...snapshot.modules]
-    .sort((left, right) => left.sortOrder - right.sortOrder)
-    .map((module) => `${module.stableId}:${module.sortOrder}`);
-  const expectedModuleOrder = Array.from(
-    { length: 11 },
-    (_, index) => `M${String(index + 1).padStart(2, "0")}:${index + 1}`,
-  );
-  if (moduleOrder.join(",") !== expectedModuleOrder.join(",")) {
-    throw new Error("INITIAL_PUBLISH_VALIDATION_FAILED reason=MODULE_SORT_ORDER");
+  return snapshot;
+}
+
+export function validatePublishableCareerSnapshot(input: unknown): CareerImport {
+  const snapshot = validateCareerImport(input);
+  if (
+    new Set(snapshot.modules.map((module) => module.sortOrder)).size !==
+    snapshot.modules.length
+  ) {
+    throw new Error("PUBLISH_VALIDATION_FAILED reason=MODULE_SORT_ORDER");
   }
 
   if (snapshot.modifiers.some((modifier) => !modifier.operation)) {

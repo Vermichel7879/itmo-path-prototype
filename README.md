@@ -2,7 +2,7 @@
 
 Новый проект Центра карьеры ИТМО: короткая rule-based анкета, которая формирует карьерный фокус, ближайшие действия, ориентиры, темп и рекомендации.
 
-Текущий статус: завершена **PHASE 3**. В Supabase существуют один DRAFT и один immutable PUBLISHED; публичная анкета и результат работают через versioned PUBLISHED configuration, server-side validation и чистый typed rule engine R01–R17. Production runtime больше не использует mock-конфигурацию.
+Текущий статус: завершена **PHASE 4**. В Supabase существуют один рабочий DRAFT и immutable PUBLISHED history; публичная анкета читает только последний PUBLISHED snapshot, а закрытая `/admin` предоставляет DRAFT editing, preview, validation, users, audit и publish workflow.
 
 ## Локальный запуск
 
@@ -20,6 +20,8 @@ npm run dev
 - `/` — landing;
 - `/questionnaire` — анкета Q1–Q8 и условные Q9–Q10;
 - `/result` — реальный `TrajectoryResult`, рассчитанный сервером для версии анкеты.
+- `/admin/login` — закрытый вход сотрудников;
+- `/admin` — защищённая рабочая панель ADMIN/EDITOR.
 
 ## Проверки
 
@@ -61,6 +63,21 @@ Runtime использует только `TRANSACTION_DATABASE_URL`; client р�
 
 Upgrade PHASE 2.5 уже применён: файлы из `scripts/supabase-upgrades/0002-typed-rules/`, затем `scripts/supabase-seed-rules/` были выполнены вручную и проверены. Эти одноразовые chunks повторно запускать нельзя; они сохранены для аудита и восстановления новой пустой базы.
 
+Upgrade PHASE 4 `0003_workable_leopardon.sql` также применён и зарегистрирован как четвёртая Drizzle migration. Chunks из `scripts/supabase-upgrades/0003-phase4-admin/` повторно запускать нельзя.
+
+## Initial admin bootstrap
+
+Первый ADMIN создаётся только явной локальной командой. Пароль не передаётся аргументом командной строки и не выводится:
+
+```powershell
+# задать только в текущем локальном shell, не в tracked-файлах
+$env:INITIAL_ADMIN_LOGIN = "vermichel"
+$env:INITIAL_ADMIN_PASSWORD = "<new secret of at least 14 characters>"
+npm run admin:create-initial
+```
+
+Команда откажется работать, если в базе уже существует хотя бы один admin user. Для runtime также обязателен независимый `ADMIN_SECURITY_SECRET` длиной не менее 32 символов; он используется для HMAC throttle identifiers и не должен совпадать с паролем.
+
 Шаблон переменных находится в `.env.example`. Все реальные `.env`, `.env.local` и `.env.production` игнорируются Git.
 
 ## Документы
@@ -88,4 +105,4 @@ Admin UI/auth, последующие publish workflows, PDF и реальные
 
 `GET /api/questionnaire` возвращает безопасный DTO без weights, modifiers и engine rules. `POST /api/trajectory` принимает `configVersionId` и плоский список stable answer IDs, повторно проверяет required/min/max/conditional вопросы на сервере и возвращает только `TrajectoryResult`.
 
-Repository допускает только запись со статусом PUBLISHED. Из-за ограничения Transaction pooler на большие JSON payload он проверяет структуру, counts, source SHA-256 и immutable PUBLISHED snapshot скалярными SQL-условиями, после чего разрешает только совпадающий versioned production artifact `src/lib/db/seed/career-config-v2.json`. Несовпадение версии или hash приводит к fail-closed состоянию; fallback на DRAFT или mock отсутствует.
+Repository допускает только запись со статусом PUBLISHED. Из-за ограничения Transaction pooler на большие JSON payload он проверяет metadata скалярными SQL-условиями и загружает immutable snapshot через server-only `read_published_config_snapshot_chunk(...)`. Каждый собранный snapshot проходит typed Zod validation; fallback на DRAFT, mock или checked-in artifact отсутствует.

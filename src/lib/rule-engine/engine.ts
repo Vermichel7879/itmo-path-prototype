@@ -105,6 +105,12 @@ function buildRecommendations(
   const recommendationById = new Map(
     config.recommendations.map((recommendation) => [recommendation.stableId, recommendation]),
   );
+  const opportunityByType = new Map<string, CareerImport["opportunities"][number]>(
+    config.opportunities
+      .filter((opportunity) => opportunity.active)
+      .sort((left, right) => left.stableId.localeCompare(right.stableId))
+      .map((opportunity) => [opportunity.type, opportunity]),
+  );
   const preferenceTargets = new Set<string>();
   const preferenceTypes = new Set<string>();
   for (const answerId of selectedIds) {
@@ -143,22 +149,49 @@ function buildRecommendations(
       if (seen.has(candidate.id)) return false;
       seen.add(candidate.id);
       const recommendation = recommendationById.get(candidate.id);
-      if (!recommendation || !recommendation.active || recommendation.status !== "ACTIVE") return false;
-      if (["EVENT", "CLUB", "FACULTY"].includes(recommendation.type)) return false;
+      if (!recommendation || !recommendation.active) return false;
+      const isOpportunitySlot = ["EVENT", "CLUB", "FACULTY"].includes(
+        recommendation.type,
+      );
+      if (isOpportunitySlot) {
+        if (recommendation.status !== "SLOT" || !opportunityByType.has(recommendation.type)) return false;
+      } else if (recommendation.status !== "ACTIVE") return false;
       return true;
     })
     .map((candidate, candidateOrder) => {
       const recommendation = recommendationById.get(candidate.id)!;
+      const opportunity = opportunityByType.get(recommendation.type);
       return {
         ...candidate,
         candidateOrder,
         recommendation,
+        publicRecommendation: opportunity
+          ? {
+              id: opportunity.stableId,
+              type: opportunity.type,
+              title: opportunity.title,
+              description: opportunity.description,
+              url: opportunity.url,
+            }
+          : {
+              id: recommendation.stableId,
+              type: recommendation.type,
+              title: recommendation.title,
+              description: recommendation.description,
+              url: recommendation.url,
+            },
         challengeBoost: challengeRecommendationIds.includes(candidate.id) ? 1 : 0,
         preferenceBoost:
           preferenceTargets.has(candidate.id) || preferenceTypes.has(recommendation.type) ? 1 : 0,
         priorityBoost: recommendation.priorityTags.some((tag) => priorityTags.has(tag)) ? 1 : 0,
       };
     })
+    .filter(
+      (candidate, index, all) =>
+        all.findIndex(
+          (other) => other.publicRecommendation.id === candidate.publicRecommendation.id,
+        ) === index,
+    )
     .sort(
       (left, right) =>
         right.challengeBoost - left.challengeBoost ||
@@ -190,13 +223,8 @@ function buildRecommendations(
 
   return {
     recommendations: chosen.map(
-      ({ recommendation }): PublicTrajectoryRecommendation => ({
-        id: recommendation.stableId,
-        type: recommendation.type,
-        title: recommendation.title,
-        description: recommendation.description,
-        url: recommendation.url,
-      }),
+      ({ publicRecommendation }): PublicTrajectoryRecommendation =>
+        publicRecommendation,
     ),
     ranking: eligible.map((candidate) => candidate.id),
   };

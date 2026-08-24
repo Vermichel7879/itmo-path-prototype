@@ -3,15 +3,15 @@ import "server-only";
 import { and, desc, eq, sql } from "drizzle-orm";
 
 import { getDatabase } from "../client";
-import { validateInitialPublishSnapshot } from "../publish/publish-validation";
+import { readPublishedSnapshotChunks } from "../config/snapshot-reader";
+import { validatePublishableCareerSnapshot } from "../publish/publish-validation";
 import { configVersions } from "../schema";
-import productionCareerConfig from "../seed/career-config-v2.json";
 
 export interface PublishedCareerConfigRecord {
   id: string;
   versionNumber: number;
   publishedAt: Date;
-  snapshot: ReturnType<typeof validateInitialPublishSnapshot>;
+  snapshot: ReturnType<typeof validatePublishableCareerSnapshot>;
 }
 
 const globalPublishedCache = globalThis as typeof globalThis & {
@@ -38,14 +38,13 @@ async function parsePublishedVersion(
   if (!version.snapshotValid || !version.rulesComplete || !version.sourceSha256 || version.snapshotSourceSha256 !== version.sourceSha256) {
     throw new Error("PUBLISHED_CONFIG_INVALID reason=SNAPSHOT_METADATA");
   }
-  const snapshot = validateInitialPublishSnapshot(productionCareerConfig);
-  if (snapshot.source.sha256 !== version.sourceSha256) {
-    throw new Error("PUBLISHED_CONFIG_INVALID reason=ARTIFACT_VERSION_MISMATCH");
-  }
+  const rawSnapshot = await readPublishedSnapshotChunks(getDatabase(), version.id);
+  const snapshot = validatePublishableCareerSnapshot(rawSnapshot);
+  if (snapshot.source.sha256 !== version.sourceSha256) throw new Error("PUBLISHED_CONFIG_INVALID reason=SOURCE_HASH");
   return {
     ...version,
     publishedAt: version.publishedAt,
-    snapshot: validateInitialPublishSnapshot(snapshot),
+    snapshot,
   };
 }
 
@@ -57,15 +56,12 @@ const publishedSelection = {
   snapshotSourceSha256: sql<string | null>`${configVersions.snapshot} -> 'source' ->> 'sha256'`,
   snapshotValid: sql<boolean>`
     jsonb_typeof(${configVersions.snapshot}) = 'object'
-    and jsonb_array_length(${configVersions.snapshot} -> 'questions') = 10
-    and jsonb_array_length(${configVersions.snapshot} -> 'answers') = 75
-    and jsonb_array_length(${configVersions.snapshot} -> 'mappings') = 52
-    and jsonb_array_length(${configVersions.snapshot} -> 'modules') = 11
-    and jsonb_array_length(${configVersions.snapshot} -> 'modifiers') = 12
-    and jsonb_array_length(${configVersions.snapshot} -> 'recommendations') = 22
-    and jsonb_array_length(${configVersions.snapshot} -> 'moduleRecommendations') = 51
-    and jsonb_array_length(${configVersions.snapshot} -> 'entrepreneurStages') = 5
-    and jsonb_array_length(${configVersions.snapshot} -> 'entrepreneurChallenges') = 8
+    and jsonb_typeof(${configVersions.snapshot} -> 'questions') = 'array'
+    and jsonb_array_length(${configVersions.snapshot} -> 'questions') > 0
+    and jsonb_typeof(${configVersions.snapshot} -> 'answers') = 'array'
+    and jsonb_array_length(${configVersions.snapshot} -> 'answers') > 0
+    and jsonb_typeof(${configVersions.snapshot} -> 'modules') = 'array'
+    and jsonb_array_length(${configVersions.snapshot} -> 'modules') > 0
     and jsonb_array_length(${configVersions.snapshot} -> 'engineRules') = 17
     and jsonb_array_length(${configVersions.snapshot} -> 'documentationExamples') = 7
   `,

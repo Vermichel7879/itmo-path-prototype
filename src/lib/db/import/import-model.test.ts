@@ -16,6 +16,7 @@ describe("career import validation", () => {
     const parsed = validateCareerImport(validConfig());
     expect(parsed.engineRules).toHaveLength(17);
     expect(parsed.documentationExamples).toHaveLength(7);
+    expect(parsed.opportunities).toEqual([]);
     expect(parsed.entrepreneurStages[0].answerStableId).toBe("Q9_A1");
     expect(parsed.entrepreneurChallenges[0].recommendationStableId).toBe(
       "GEN_ENT_CUSTOMER",

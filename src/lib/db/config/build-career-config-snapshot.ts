@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 
-import type { CareerDatabase } from "../connection";
+import type { CareerDatabaseExecutor } from "../connection";
 import {
   answers,
   answerModuleWeights,
@@ -12,6 +12,7 @@ import {
   modifiers,
   moduleRecommendations,
   modules,
+  opportunities,
   questions,
   recommendations,
 } from "../schema";
@@ -24,28 +25,31 @@ import {
   engineRuleSchema,
   modifierOperationSchema,
 } from "./typed-rules";
+import { readDraftSnapshotChunks } from "./snapshot-reader";
 
 export function assembleCareerConfigSnapshot(input: unknown): CareerImport {
   return validateCareerImport(input);
 }
 
 export async function buildCareerConfigSnapshot(
-  db: CareerDatabase,
+  db: CareerDatabaseExecutor,
   configVersionId: string,
 ): Promise<CareerImport> {
   const [version] = await db
     .select({
       sourceFileName: configVersions.sourceFileName,
       sourceSha256: configVersions.sourceSha256,
-      snapshot: configVersions.snapshot,
     })
     .from(configVersions)
     .where(eq(configVersions.id, configVersionId))
     .limit(1);
   if (!version) throw new Error(`Config version ${configVersionId} not found`);
 
-  const previousSnapshot = version.snapshot as Partial<CareerImport>;
-  if (!previousSnapshot.source || !previousSnapshot.editingInstructions) {
+  const previousSnapshot = (await readDraftSnapshotChunks(
+    db,
+    configVersionId,
+  )) as Partial<CareerImport> | null;
+  if (!previousSnapshot?.source || !previousSnapshot.editingInstructions) {
     throw new Error("Config version is missing source metadata for snapshot build");
   }
 
@@ -74,6 +78,10 @@ export async function buildCareerConfigSnapshot(
     .select()
     .from(recommendations)
     .where(eq(recommendations.configVersionId, configVersionId));
+  const opportunityRows = await db
+    .select()
+    .from(opportunities)
+    .where(eq(opportunities.configVersionId, configVersionId));
   const moduleRecommendationRows = await db
     .select()
     .from(moduleRecommendations)
@@ -257,6 +265,21 @@ export async function buildCareerConfigSnapshot(
       ),
       priority: link.priority,
     })),
+    opportunities: opportunityRows
+      .sort((left, right) => left.stableId.localeCompare(right.stableId))
+      .map((opportunity) => ({
+        stableId: opportunity.stableId,
+        type: opportunity.type,
+        title: opportunity.title,
+        description: opportunity.description,
+        url: opportunity.url,
+        startsAt: opportunity.startsAt?.toISOString() ?? null,
+        endsAt: opportunity.endsAt?.toISOString() ?? null,
+        validFrom: opportunity.validFrom?.toISOString() ?? null,
+        validTo: opportunity.validTo?.toISOString() ?? null,
+        tags: opportunity.tags,
+        active: opportunity.active,
+      })),
     entrepreneurStages: stageRows
       .sort((left, right) => left.sortOrder - right.sortOrder)
       .map((stage) => ({

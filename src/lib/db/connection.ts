@@ -24,3 +24,4 @@ export function createCommandDatabaseConnection() {
 }
 
 export type CareerDatabase = ReturnType<typeof createDatabaseConnection>["db"];
+export type CareerDatabaseExecutor = Omit<CareerDatabase, "$client">;

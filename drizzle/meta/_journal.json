@@ -22,6 +22,13 @@
       "when": 1787522747953,
       "tag": "0002_slimy_zarek",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787567239361,
+      "tag": "0003_workable_leopardon",
+      "breakpoints": true
     }
   ]
 }

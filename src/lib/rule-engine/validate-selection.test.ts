@@ -75,4 +75,32 @@ describe("engine safety policies", () => {
     expect(new Set(result.recommendations.map((item) => item.id)).size).toBe(result.recommendations.length);
     expect(result.recommendations.every((item) => !["EVENT", "CLUB", "FACULTY"].includes(item.type))).toBe(true);
   });
+
+  it("resolves a published slot from versioned active opportunities", () => {
+    const withOpportunity = structuredClone(config);
+    withOpportunity.opportunities.push({
+      stableId: "EVENT_TEST",
+      type: "EVENT",
+      title: "Тестовое мероприятие",
+      description: "Проверка versioned opportunity resolution",
+      url: "https://example.test/event",
+      startsAt: null,
+      endsAt: null,
+      validFrom: null,
+      validTo: null,
+      tags: [],
+      active: true,
+    });
+    const eventSlot = withOpportunity.recommendations.find(
+      (item) => item.type === "EVENT",
+    );
+    if (!eventSlot) throw new Error("EVENT slot fixture missing");
+    withOpportunity.moduleRecommendations.unshift({
+      moduleStableId: "M10",
+      recommendationStableId: eventSlot.stableId,
+      priority: 1,
+    });
+    const { result } = calculateCareerTrajectoryDebug("version", withOpportunity, ["Q1_A6", "Q2_A2", "Q3_A4", "Q5_A5"]);
+    expect(result.recommendations.some((item) => item.id === "EVENT_TEST")).toBe(true);
+  });
 });

@@ -140,6 +140,37 @@ export const adminSessions = pgTable(
   ],
 );
 
+export const adminLoginAttempts = pgTable(
+  "admin_login_attempts",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    usernameHash: varchar("username_hash", { length: 64 }).notNull(),
+    ipHash: varchar("ip_hash", { length: 64 }).notNull(),
+    succeeded: boolean("succeeded").default(false).notNull(),
+    attemptedAt: timestamp("attempted_at", { withTimezone: true })
+      .defaultNow()
+      .notNull(),
+  },
+  (table) => [
+    index("admin_login_attempts_username_time_idx").on(
+      table.usernameHash,
+      table.attemptedAt,
+    ),
+    index("admin_login_attempts_ip_time_idx").on(
+      table.ipHash,
+      table.attemptedAt,
+    ),
+    check(
+      "admin_login_attempts_username_hash_format",
+      sql`${table.usernameHash} ~ '^[a-f0-9]{64}$'`,
+    ),
+    check(
+      "admin_login_attempts_ip_hash_format",
+      sql`${table.ipHash} ~ '^[a-f0-9]{64}$'`,
+    ),
+  ],
+);
+
 export const configVersions = pgTable(
   "config_versions",
   {
@@ -540,6 +571,9 @@ export const opportunities = pgTable(
   "opportunities",
   {
     id: uuid("id").defaultRandom().primaryKey(),
+    configVersionId: uuid("config_version_id")
+      .notNull()
+      .references(() => configVersions.id, { onDelete: "cascade" }),
     stableId: varchar("stable_id", { length: 100 }).notNull(),
     type: opportunityTypeEnum("type").notNull(),
     title: varchar("title", { length: 280 }).notNull(),
@@ -554,8 +588,19 @@ export const opportunities = pgTable(
     ...timestamps,
   },
   (table) => [
-    uniqueIndex("opportunities_stable_unique").on(table.stableId),
-    index("opportunities_type_active_idx").on(table.type, table.active),
+    unique("opportunities_id_version_unique").on(
+      table.id,
+      table.configVersionId,
+    ),
+    uniqueIndex("opportunities_version_stable_unique").on(
+      table.configVersionId,
+      table.stableId,
+    ),
+    index("opportunities_version_type_active_idx").on(
+      table.configVersionId,
+      table.type,
+      table.active,
+    ),
     index("opportunities_validity_idx").on(table.validFrom, table.validTo),
     check(
       "opportunities_date_order",
