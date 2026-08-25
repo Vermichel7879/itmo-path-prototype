@@ -7,6 +7,7 @@ import { DraftConflictError } from "./draft-service";
 
 const safeOperationErrors = new Set([
   "ANSWER_ID_QUESTION_MISMATCH",
+  "ADMIN_USER_NOT_FOUND",
   "ADMIN_USERNAME_EXISTS",
   "CURRENT_PASSWORD_INVALID",
   "DRAFT_CONFIG_MISSING",

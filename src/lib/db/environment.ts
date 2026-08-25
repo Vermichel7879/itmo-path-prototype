@@ -12,21 +12,23 @@ const postgresUrl = z.string().trim().min(1).refine(
   { message: "ожидается PostgreSQL connection string" },
 );
 
-const adminSeedSchema = z
-  .object({
-    login: z.string().trim().min(3),
-    password: z.string().min(12),
-  })
-  .strict();
+export const READ_DATABASE_ENV_NAME = "TRANSACTION_DATABASE_URL" as const;
+type DatabaseEnvironment = Record<string, string | undefined>;
 
 export function requireDatabaseUrl(
-  environment: NodeJS.ProcessEnv = process.env,
+  environment: DatabaseEnvironment = process.env,
+): string {
+  return requireReadDatabaseUrl(environment);
+}
+
+export function requireReadDatabaseUrl(
+  environment: DatabaseEnvironment = process.env,
 ): string {
   return requireTransactionDatabaseUrl(environment);
 }
 
 export function requireTransactionDatabaseUrl(
-  environment: NodeJS.ProcessEnv = process.env,
+  environment: DatabaseEnvironment = process.env,
 ): string {
   const result = postgresUrl.safeParse(environment.TRANSACTION_DATABASE_URL);
   if (result.success) return result.data;
@@ -36,7 +38,7 @@ export function requireTransactionDatabaseUrl(
 }
 
 export function requireMigrationDatabaseUrl(
-  environment: NodeJS.ProcessEnv = process.env,
+  environment: DatabaseEnvironment = process.env,
 ): string {
   const result = postgresUrl.safeParse(
     environment.DIRECT_DATABASE_URL ?? environment.DATABASE_URL,
@@ -45,18 +47,4 @@ export function requireMigrationDatabaseUrl(
   throw new Error(
     "DIRECT_DATABASE_URL or DATABASE_URL must contain a valid PostgreSQL connection string.",
   );
-}
-
-export function readInitialAdminCredentials(
-  environment: NodeJS.ProcessEnv = process.env,
-): z.infer<typeof adminSeedSchema> | null {
-  const login = environment.INITIAL_ADMIN_LOGIN;
-  const password = environment.INITIAL_ADMIN_PASSWORD;
-  if (!login && !password) return null;
-  if (!login || !password) {
-    throw new Error(
-      "INITIAL_ADMIN_LOGIN и INITIAL_ADMIN_PASSWORD должны быть заданы вместе.",
-    );
-  }
-  return adminSeedSchema.parse({ login, password });
 }

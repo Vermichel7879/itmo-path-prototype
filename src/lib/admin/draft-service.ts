@@ -1,27 +1,15 @@
 import "server-only";
 
-import { and, eq, sql } from "drizzle-orm";
 import { z } from "zod";
 
 import { requireCapability, type AdminRole } from "@/lib/auth/permissions";
-import { getDatabase } from "@/lib/db/client";
-import { buildCareerConfigSnapshot } from "@/lib/db/config/build-career-config-snapshot";
-import { readDraftSnapshotChunks } from "@/lib/db/config/snapshot-reader";
-import type { CareerDatabaseExecutor } from "@/lib/db/connection";
-import { validateCareerImport } from "@/lib/db/import/import-model";
 import {
-  answers,
-  answerModuleWeights,
-  auditLog,
-  configVersions,
-  engineRules,
-  modifiers,
-  modules,
-  opportunities,
-  questions,
-  recommendations,
-} from "@/lib/db/schema";
+  type CareerImport,
+  validateCareerImport,
+} from "@/lib/db/import/import-model";
+import { AdminDataApiError } from "@/lib/supabase/admin-rpc";
 
+import { adminDataApi } from "./data-api";
 import { validateDraftCareerConfig } from "./validation";
 import { assertExpectedRevision } from "./concurrency";
 
@@ -186,41 +174,39 @@ export class DraftConflictError extends Error {
   }
 }
 
-async function currentDraft(db: CareerDatabaseExecutor) {
-  const [draft] = await db
-    .select({ id: configVersions.id, updatedAt: configVersions.updatedAt })
-    .from(configVersions)
-    .where(eq(configVersions.status, "DRAFT"))
-    .limit(1);
-  if (!draft) throw new Error("DRAFT_CONFIG_MISSING");
-  return draft;
-}
-
 export async function getCurrentDraftConfig() {
-  const db = getDatabase();
-  const draft = await currentDraft(db);
-  const snapshot = validateCareerImport(await readDraftSnapshotChunks(db, draft.id));
+  const draft = await adminDataApi.getDraft();
+  const snapshot = validateCareerImport(draft.snapshot);
   return {
     id: draft.id,
-    updatedAt: draft.updatedAt.toISOString(),
+    updatedAt: draft.updatedAt,
+    snapshotHash: draft.snapshotHash,
     snapshot,
     validation: validateDraftCareerConfig(snapshot),
   };
 }
 
-async function applyMutation(
-  tx: CareerDatabaseExecutor,
-  draftId: string,
+export function applyDraftMutationToSnapshot(
+  current: CareerImport,
   mutation: DraftMutation,
-) {
-  const updatedAt = new Date();
-  const whereStable = (column: typeof questions.stableId) =>
-    and(eq(column, mutation.stableId), eq(questions.configVersionId, draftId));
+): CareerImport {
+  const snapshot = structuredClone(current);
+  const required = <T extends { stableId: string }>(
+    collection: T[],
+    stableIdValue: string,
+    error: string,
+  ) => {
+    const entity = collection.find((item) => item.stableId === stableIdValue);
+    if (!entity) throw new Error(error);
+    return entity;
+  };
+
   switch (mutation.entityType) {
     case "QUESTION_CREATE": {
-      if (!mutation.values.firstAnswer.stableId.startsWith(`${mutation.stableId}_A`)) throw new Error("ANSWER_ID_QUESTION_MISMATCH");
-      const [createdQuestion] = await tx.insert(questions).values({
-        configVersionId: draftId,
+      if (!mutation.values.firstAnswer.stableId.startsWith(`${mutation.stableId}_A`)) {
+        throw new Error("ANSWER_ID_QUESTION_MISMATCH");
+      }
+      snapshot.questions.push({
         stableId: mutation.stableId,
         block: mutation.values.block,
         text: mutation.values.text,
@@ -231,11 +217,10 @@ async function applyMutation(
         sortOrder: mutation.values.sortOrder,
         showCondition: mutation.values.showCondition,
         active: true,
-      }).returning({ id: questions.id });
-      await tx.insert(answers).values({
-        configVersionId: draftId,
-        questionId: createdQuestion.id,
+      });
+      snapshot.answers.push({
         stableId: mutation.values.firstAnswer.stableId,
+        questionStableId: mutation.stableId,
         text: mutation.values.firstAnswer.text,
         sortOrder: 1,
         tags: [],
@@ -245,13 +230,17 @@ async function applyMutation(
       break;
     }
     case "ANSWER_CREATE": {
-      if (!mutation.stableId.startsWith(`${mutation.values.questionStableId}_A`)) throw new Error("ANSWER_ID_QUESTION_MISMATCH");
-      const [question] = await tx.select({ id: questions.id }).from(questions).where(and(eq(questions.configVersionId, draftId), eq(questions.stableId, mutation.values.questionStableId))).limit(1);
-      if (!question) throw new Error("QUESTION_NOT_FOUND");
-      await tx.insert(answers).values({
-        configVersionId: draftId,
-        questionId: question.id,
+      if (!mutation.stableId.startsWith(`${mutation.values.questionStableId}_A`)) {
+        throw new Error("ANSWER_ID_QUESTION_MISMATCH");
+      }
+      required(
+        snapshot.questions,
+        mutation.values.questionStableId,
+        "QUESTION_NOT_FOUND",
+      );
+      snapshot.answers.push({
         stableId: mutation.stableId,
+        questionStableId: mutation.values.questionStableId,
         text: mutation.values.text,
         sortOrder: mutation.values.sortOrder,
         tags: mutation.values.tags,
@@ -260,38 +249,72 @@ async function applyMutation(
       });
       break;
     }
-    case "RECOMMENDATION_CREATE":
-      await tx.insert(recommendations).values({ configVersionId: draftId, stableId: mutation.stableId, ...mutation.values });
+    case "RECOMMENDATION_CREATE": {
+      snapshot.recommendations.push({
+        stableId: mutation.stableId,
+        ...mutation.values,
+      });
       break;
-    case "QUESTION":
-      await tx.update(questions).set({ ...mutation.values, updatedAt }).where(whereStable(questions.stableId));
+    }
+    case "QUESTION": {
+      Object.assign(
+        required(snapshot.questions, mutation.stableId, "QUESTION_NOT_FOUND"),
+        mutation.values,
+      );
       break;
-    case "ANSWER":
-      await tx.update(answers).set({ ...mutation.values, updatedAt }).where(and(eq(answers.stableId, mutation.stableId), eq(answers.configVersionId, draftId)));
+    }
+    case "ANSWER": {
+      Object.assign(
+        required(snapshot.answers, mutation.stableId, "ANSWER_NOT_FOUND"),
+        mutation.values,
+      );
       break;
-    case "MODULE":
-      await tx.update(modules).set({ ...mutation.values, updatedAt }).where(and(eq(modules.stableId, mutation.stableId), eq(modules.configVersionId, draftId)));
+    }
+    case "MODULE": {
+      const careerModule = required(
+        snapshot.modules,
+        mutation.stableId,
+        "MODULE_NOT_FOUND",
+      );
+      const { step1, step2, step3, ...values } = mutation.values;
+      Object.assign(careerModule, values);
+      if (step1 !== undefined) careerModule.steps[0] = step1;
+      if (step2 !== undefined) careerModule.steps[1] = step2;
+      if (step3 !== undefined) careerModule.steps[2] = step3;
       break;
-    case "RECOMMENDATION":
-      await tx.update(recommendations).set({ ...mutation.values, updatedAt }).where(and(eq(recommendations.stableId, mutation.stableId), eq(recommendations.configVersionId, draftId)));
+    }
+    case "RECOMMENDATION": {
+      Object.assign(
+        required(
+          snapshot.recommendations,
+          mutation.stableId,
+          "RECOMMENDATION_NOT_FOUND",
+        ),
+        mutation.values,
+      );
       break;
+    }
     case "OPPORTUNITY": {
-      const dateValues = Object.fromEntries(Object.entries(mutation.values).map(([key, value]) => [key, key.endsWith("At") || key === "validFrom" || key === "validTo" ? (typeof value === "string" ? new Date(value) : value) : value]));
-      const updated = await tx.update(opportunities).set({ ...dateValues, updatedAt }).where(and(eq(opportunities.stableId, mutation.stableId), eq(opportunities.configVersionId, draftId))).returning({ id: opportunities.id });
-      if (!updated.length) {
+      const opportunity = snapshot.opportunities.find(
+        (item) => item.stableId === mutation.stableId,
+      );
+      if (opportunity) {
+        Object.assign(opportunity, mutation.values);
+      } else {
         const values = mutation.values;
-        if (!values.type || !values.title || !values.description) throw new Error("OPPORTUNITY_CREATE_FIELDS_REQUIRED");
-        await tx.insert(opportunities).values({
-          configVersionId: draftId,
+        if (!values.type || !values.title || !values.description) {
+          throw new Error("OPPORTUNITY_CREATE_FIELDS_REQUIRED");
+        }
+        snapshot.opportunities.push({
           stableId: mutation.stableId,
           type: values.type,
           title: values.title,
           description: values.description,
           url: values.url ?? null,
-          startsAt: values.startsAt ? new Date(values.startsAt) : null,
-          endsAt: values.endsAt ? new Date(values.endsAt) : null,
-          validFrom: values.validFrom ? new Date(values.validFrom) : null,
-          validTo: values.validTo ? new Date(values.validTo) : null,
+          startsAt: values.startsAt ?? null,
+          endsAt: values.endsAt ?? null,
+          validFrom: values.validFrom ?? null,
+          validTo: values.validTo ?? null,
           tags: values.tags ?? [],
           active: values.active ?? true,
         });
@@ -300,28 +323,57 @@ async function applyMutation(
     }
     case "WEIGHT": {
       const [answerStableId, moduleStableId] = mutation.stableId.split(":");
-      const [answer] = await tx.select({ id: answers.id }).from(answers).where(and(eq(answers.configVersionId, draftId), eq(answers.stableId, answerStableId))).limit(1);
-      const [module] = await tx.select({ id: modules.id }).from(modules).where(and(eq(modules.configVersionId, draftId), eq(modules.stableId, moduleStableId))).limit(1);
-      if (!answer || !module) throw new Error("WEIGHT_REFERENCE_NOT_FOUND");
-      await tx.insert(answerModuleWeights).values({ configVersionId: draftId, answerId: answer.id, moduleId: module.id, weight: mutation.values.weight }).onConflictDoUpdate({ target: [answerModuleWeights.configVersionId, answerModuleWeights.answerId, answerModuleWeights.moduleId], set: { weight: mutation.values.weight } });
+      const answer = snapshot.answers.find((item) => item.stableId === answerStableId);
+      const careerModule = snapshot.modules.find(
+        (item) => item.stableId === moduleStableId,
+      );
+      if (!answer || !careerModule) throw new Error("WEIGHT_REFERENCE_NOT_FOUND");
+      const mapping = snapshot.mappings.find(
+        (item) =>
+          item.answerStableId === answerStableId &&
+          item.moduleStableId === moduleStableId,
+      );
+      if (mapping) {
+        mapping.weight = mutation.values.weight;
+      } else {
+        snapshot.mappings.push({
+          answerStableId,
+          questionStableId: answer.questionStableId,
+          moduleStableId,
+          weight: mutation.values.weight,
+        });
+      }
       break;
     }
-    case "RULE":
-      await tx.update(engineRules).set({
-        ...mutation.values,
-        params: mutation.values.params as typeof engineRules.$inferInsert.params,
-        updatedAt,
-      }).where(and(eq(engineRules.stableId, mutation.stableId), eq(engineRules.configVersionId, draftId)));
+    case "RULE": {
+      Object.assign(
+        required(snapshot.engineRules, mutation.stableId, "RULE_NOT_FOUND"),
+        mutation.values,
+      );
       break;
-    case "MODIFIER":
-      await tx.update(modifiers).set({
-        ...mutation.values,
-        effect: mutation.values.effect as typeof modifiers.$inferInsert.effect,
-        operationParams: mutation.values.operationParams as typeof modifiers.$inferInsert.operationParams,
-        updatedAt,
-      }).where(and(eq(modifiers.stableId, mutation.stableId), eq(modifiers.configVersionId, draftId)));
+    }
+    case "MODIFIER": {
+      const modifier = required(
+        snapshot.modifiers,
+        mutation.stableId,
+        "MODIFIER_NOT_FOUND",
+      );
+      if (mutation.values.effect !== undefined) {
+        modifier.effect = mutation.values.effect as typeof modifier.effect;
+      }
+      if (mutation.values.operationParams !== undefined) {
+        modifier.operation = {
+          ...modifier.operation,
+          params: mutation.values.operationParams,
+        } as typeof modifier.operation;
+      }
+      if (mutation.values.active !== undefined) {
+        modifier.active = mutation.values.active;
+      }
       break;
+    }
   }
+  return validateCareerImport(snapshot);
 }
 
 export async function mutateCurrentDraft(input: {
@@ -334,44 +386,39 @@ export async function mutateCurrentDraft(input: {
     ? "LOGIC_EDIT"
     : "CONTENT_EDIT";
   requireCapability(input.role, capability);
-  return getDatabase().transaction(async (tx) => {
-    const draft = await currentDraft(tx);
-    try {
-      assertExpectedRevision(draft.updatedAt, input.mutation.expectedUpdatedAt);
-    } catch {
-      throw new DraftConflictError();
-    }
-    const locked = await tx.execute<Record<string, unknown>>(sql`
-      select updated_at as "updatedAt"
-      from config_versions
-      where id = ${draft.id}::uuid and status = 'DRAFT'
-      for update
-    `);
-    const lockedRevision = locked[0]?.updatedAt;
-    if (!lockedRevision || new Date(String(lockedRevision)).toISOString() !== input.mutation.expectedUpdatedAt) {
-      throw new DraftConflictError();
-    }
-    const previousSnapshot = validateCareerImport(await readDraftSnapshotChunks(tx, draft.id));
-    await applyMutation(tx, draft.id, input.mutation);
-    const snapshot = await buildCareerConfigSnapshot(tx, draft.id);
-    const validation = validateDraftCareerConfig(snapshot);
-    if (!validation.valid) throw new Error("DRAFT_MUTATION_INVALID_CONFIG");
-    const now = new Date();
-    await tx.update(configVersions).set({ snapshot, updatedAt: now }).where(eq(configVersions.id, draft.id));
-    await tx.insert(auditLog).values({
-      actorAdminUserId: input.actorUserId,
-      configVersionId: draft.id,
-      action: "DRAFT_ENTITY_UPDATED",
-      entityType: input.mutation.entityType,
-      entityId: input.mutation.stableId,
-      metadata: {
+  const draft = await getCurrentDraftConfig();
+  try {
+    assertExpectedRevision(new Date(draft.updatedAt), input.mutation.expectedUpdatedAt);
+  } catch {
+    throw new DraftConflictError();
+  }
+  const snapshot = applyDraftMutationToSnapshot(draft.snapshot, input.mutation);
+  const validation = validateDraftCareerConfig(snapshot);
+  if (!validation.valid) throw new Error("DRAFT_MUTATION_INVALID_CONFIG");
+  let result: Awaited<ReturnType<typeof adminDataApi.mutateDraft>>;
+  try {
+    result = await adminDataApi.mutateDraft({
+      actorUserId: input.actorUserId,
+      expectedUpdatedAt: input.mutation.expectedUpdatedAt,
+      expectedSnapshotHash: draft.snapshotHash,
+      mutation: input.mutation,
+      nextSnapshot: snapshot,
+      audit: {
         changedFields: Object.keys(input.mutation.values),
-        previous: snapshotEntityValues(previousSnapshot, input.mutation),
+        previous: snapshotEntityValues(draft.snapshot, input.mutation),
         next: input.mutation.values,
       },
     });
-    return { id: draft.id, updatedAt: now.toISOString(), validation };
-  });
+  } catch (error) {
+    if (
+      error instanceof AdminDataApiError &&
+      error.message === "DRAFT_STALE_REVISION"
+    ) {
+      throw new DraftConflictError();
+    }
+    throw error;
+  }
+  return { ...result, validation };
 }
 
 function snapshotEntityValues(

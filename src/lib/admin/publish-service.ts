@@ -1,12 +1,10 @@
 import "server-only";
 
-import { max, sql } from "drizzle-orm";
-
 import { requireCapability } from "@/lib/auth/permissions";
-import { getDatabase } from "@/lib/db/client";
-import { auditLog, configVersions } from "@/lib/db/schema";
-import { getLatestPublishedCareerConfig } from "@/lib/db/repositories/published-career-config";
+import { validateCareerImport } from "@/lib/db/import/import-model";
+import { AdminDataApiError } from "@/lib/supabase/admin-rpc";
 
+import { adminDataApi } from "./data-api";
 import { getCurrentDraftConfig, DraftConflictError } from "./draft-service";
 import { validateDraftCareerConfig } from "./validation";
 
@@ -39,8 +37,10 @@ export function summarizeSnapshotDiff(previous: Snapshot, next: Snapshot) {
 
 export async function getPublishPreparation() {
   const draft = await getCurrentDraftConfig();
-  const latest = await getLatestPublishedCareerConfig();
-  const previous = latest?.snapshot ?? draft.snapshot;
+  const latest = await adminDataApi.getLatestPublishedSnapshot();
+  const previous = latest
+    ? validateCareerImport(latest.snapshot)
+    : draft.snapshot;
   return {
     draftId: draft.id,
     expectedUpdatedAt: draft.updatedAt,
@@ -61,41 +61,21 @@ export async function publishCurrentDraft(input: {
   const validation = validateDraftCareerConfig(prepared.snapshot);
   if (!validation.valid) throw new Error("PUBLISH_BLOCKED_BY_VALIDATION");
 
-  return getDatabase().transaction(async (tx) => {
-    const locked = await tx.execute<Record<string, unknown>>(sql`
-      select id, updated_at as "updatedAt"
-      from config_versions
-      where status = 'DRAFT'
-      for update
-    `);
-    const row = locked[0];
-    if (!row || new Date(String(row.updatedAt)).toISOString() !== input.expectedUpdatedAt) {
+  try {
+    return await adminDataApi.publishDraft({
+      actorUserId: input.actorUserId,
+      expectedUpdatedAt: input.expectedUpdatedAt,
+      expectedSnapshotHash: prepared.snapshotHash,
+      label:
+        input.label?.trim() || `Published ${new Date().toISOString()}`,
+    });
+  } catch (error) {
+    if (
+      error instanceof AdminDataApiError &&
+      error.message === "DRAFT_STALE_REVISION"
+    ) {
       throw new DraftConflictError();
     }
-    const [version] = await tx.select({ value: max(configVersions.versionNumber) }).from(configVersions);
-    const now = new Date();
-    const [published] = await tx
-      .insert(configVersions)
-      .values({
-        versionNumber: (version?.value ?? 0) + 1,
-        status: "PUBLISHED",
-        label: input.label?.trim() || `Published ${now.toISOString()}`,
-        sourceFileName: prepared.snapshot.source.fileName,
-        sourceSha256: prepared.snapshot.source.sha256,
-        snapshot: prepared.snapshot,
-        createdByAdminUserId: input.actorUserId,
-        publishedByAdminUserId: input.actorUserId,
-        publishedAt: now,
-      })
-      .returning({ id: configVersions.id, versionNumber: configVersions.versionNumber });
-    await tx.insert(auditLog).values({
-      actorAdminUserId: input.actorUserId,
-      configVersionId: published.id,
-      action: "CONFIG_PUBLISHED",
-      entityType: "CONFIG_VERSION",
-      entityId: published.id,
-      metadata: { versionNumber: published.versionNumber, draftId: prepared.id },
-    });
-    return { ...published, publishedAt: now.toISOString() };
-  });
+    throw error;
+  }
 }

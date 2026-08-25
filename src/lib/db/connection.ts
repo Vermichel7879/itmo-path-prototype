@@ -1,14 +1,16 @@
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 
-import { requireDatabaseUrl } from "./environment";
+import { requireReadDatabaseUrl } from "./environment";
 import * as schema from "./schema";
 
+export const READ_DATABASE_CLIENT_OPTIONS = {
+  max: 1,
+  prepare: false,
+} as const;
+
 export function createDatabaseConnection(databaseUrl: string) {
-  const client = postgres(databaseUrl, {
-    max: 1,
-    prepare: false,
-  });
+  const client = postgres(databaseUrl, READ_DATABASE_CLIENT_OPTIONS);
   return {
     client,
     db: drizzle({ client, schema }),
@@ -16,7 +18,7 @@ export function createDatabaseConnection(databaseUrl: string) {
 }
 
 export function createCommandDatabaseConnection() {
-  const connection = createDatabaseConnection(requireDatabaseUrl());
+  const connection = createDatabaseConnection(requireReadDatabaseUrl());
   return {
     db: connection.db,
     close: () => connection.client.end({ timeout: 5 }),

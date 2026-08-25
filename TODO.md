@@ -88,6 +88,17 @@
 - [x] Пройти quality gates.
 - [x] STOP и запросить разрешение на PHASE 5.
 
+### PHASE 4 production connection stabilization
+
+- [x] Перевести admin reads/writes с postgres.js sockets на server-only Supabase Data API domain RPC.
+- [x] Подготовить migration 0004, security grants и атомарные SQL Editor chunks без изменения live Supabase.
+- [x] Добавить tests для fail-closed env, RPC mappings, optimistic conflict, last ADMIN, audit и запрета raw postgres.js в admin runtime.
+- [x] Вручную применить chunks 0004 и выполнить `verify.sql`.
+- [x] Локально проверить Data API login, session, read-only views и обратимую DRAFT mutation без publish.
+- [x] Удалить legacy write probe, его secret и неиспользуемую ADMIN_DATABASE_URL архитектуру.
+- [ ] Добавить Preview/Production server-only env и пройти Preview login/write smoke перед production rollout.
+- [ ] Повторно пройти quality gates и только затем считать PHASE 4 production-ready.
+
 ## PHASE 5 — PDF, рекомендации и polish
 
 - [ ] Выбрать PDF renderer и зафиксировать безопасный transport результата.

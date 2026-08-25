@@ -1,17 +1,22 @@
 import "server-only";
 
 import { createDatabaseConnection } from "./connection";
-import { requireDatabaseUrl } from "./environment";
+import { requireReadDatabaseUrl } from "./environment";
 
 type DatabaseConnection = ReturnType<typeof createDatabaseConnection>;
 
 const globalDatabase = globalThis as typeof globalThis & {
-  careerDatabase?: DatabaseConnection;
+  careerReadDatabase?: DatabaseConnection;
 };
 
-export function getDatabase() {
-  if (!globalDatabase.careerDatabase) {
-    globalDatabase.careerDatabase = createDatabaseConnection(requireDatabaseUrl());
+export function getReadDatabase() {
+  if (!globalDatabase.careerReadDatabase) {
+    globalDatabase.careerReadDatabase = createDatabaseConnection(
+      requireReadDatabaseUrl(),
+    );
   }
-  return globalDatabase.careerDatabase.db;
+  return globalDatabase.careerReadDatabase.db;
 }
+
+/** Read-only compatibility alias. New code should state its intent explicitly. */
+export const getDatabase = getReadDatabase;

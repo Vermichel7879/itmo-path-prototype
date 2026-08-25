@@ -125,6 +125,14 @@ Transaction pooler стабильно выполняет scalar JSON-прове�
 
 Upgrade из `scripts/supabase-upgrades/0003-phase4-admin/` применён и read-only проверен. Drizzle history содержит четыре записи. Admin runtime использует versioned opportunities и database-backed login throttle; public repository получает только PUBLISHED snapshots через chunk reader.
 
+### Read/write connections
+
+`TRANSACTION_DATABASE_URL` остаётся стабильным read connection только для public runtime. Admin subsystem полностью отделён от долгоживущих postgres.js sockets: все admin reads и writes идут из server-only кода через `@supabase/supabase-js`, Supabase Data API и узкие domain RPC. Обязательные `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` загружаются fail-closed и никогда не используют `NEXT_PUBLIC_`.
+
+Составные operations представлены одной RPC каждая. Успешный login атомарно записывает throttle attempt, session hash, `last_login_at` и audit. User mutation защищает последнего активного ADMIN и пишет audit. DRAFT mutation принимает проверенные TypeScript-слоем canonical snapshot, expected `updated_at` и SHA-256 snapshot hash, затем атомарно меняет normalized rows, snapshot и audit. Publish повторно проверяет revision/hash, создаёт новый immutable PUBLISHED и audit. Application-level automatic retry запрещён.
+
+RPC объявлены `SECURITY DEFINER` только для необходимой атомарности, имеют фиксированный `search_path = ''`, полностью квалифицированные имена объектов и явную проверку параметров/actor. `EXECUTE` отозван у `PUBLIC`, `anon`, `authenticated` и выдан только `service_role`; прямые table privileges Data API ролей отозваны, на admin/business tables включён RLS. Migration `0004_admin-data-api.sql` и атомарные SQL Editor chunks подготовлены, но до их ручного применения и `verify.sql` PHASE 4 остаётся в состоянии `PHASE4_DATA_API_UPGRADE_REQUIRED`.
+
 ## 8. Rule engine
 
 Доменный API планируется в форме чистой функции:
@@ -140,7 +148,7 @@ calculateTrajectory(config: PublishedConfig, answerIds: AnswerId[]): TrajectoryR
 ## 9. Аутентификация и безопасность
 
 - `/admin` всегда проверяет server-side session; без неё выполняется redirect на `/admin/login`.
-- Пароли хранятся только как bcrypt hash; первоначальный пароль поступает из environment variable.
+- Пароли хранятся только как bcrypt hash; plaintext-пароли не сохраняются и не логируются.
 - Session cookie: `httpOnly`, `secure` в production, явный `sameSite`, срок действия и ротация.
 - ADMIN и EDITOR проверяются на сервере для каждой mutation, а не только скрытием UI.
 - Секреты и `.env*` не попадают в Git, логи или client bundle.
@@ -163,7 +171,7 @@ calculateTrajectory(config: PublishedConfig, answerIds: AnswerId[]): TrajectoryR
 
 Существующий Git remote и существующая Vercel-привязка сохраняются. Новый Vercel project не создаётся. Production получает Supabase connection string и secrets только через environment variables. Миграции выполняются отдельным контролируемым шагом до выкладки приложения.
 
-Runtime приложения использует только `TRANSACTION_DATABASE_URL` через `postgres.js` с `prepare: false`. `DIRECT_DATABASE_URL` и `DATABASE_URL` относятся только к migration tooling и runtime-кодом не используются. Первоначальный bootstrap выполнен атомарными SQL Editor chunks из `scripts/supabase-bootstrap/`; они сохраняют обычный Drizzle history format и не заменяют последующий migration workflow. Реальные `.env*` игнорируются, а `.env.example` содержит только пустые placeholders.
+Public runtime reads используют server-only `TRANSACTION_DATABASE_URL` и `postgres.js` с `prepare: false`. Admin runtime использует server-only `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY` через Data API/RPC; для криптографии сессий и throttle используется `ADMIN_SECURITY_SECRET`. `ADMIN_DATABASE_URL` и временный write probe удалены. `DIRECT_DATABASE_URL` и `DATABASE_URL` относятся только к migration tooling. Реальные `.env*` игнорируются, а `.env.example` содержит только пустые placeholders.
 
 ## 12. Отложенные решения
 

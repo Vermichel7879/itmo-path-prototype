@@ -2,7 +2,7 @@
 
 Новый проект Центра карьеры ИТМО: короткая rule-based анкета, которая формирует карьерный фокус, ближайшие действия, ориентиры, темп и рекомендации.
 
-Текущий статус: завершена **PHASE 4**. В Supabase существуют один рабочий DRAFT и immutable PUBLISHED history; публичная анкета читает только последний PUBLISHED snapshot, а закрытая `/admin` предоставляет DRAFT editing, preview, validation, users, audit и publish workflow.
+Текущий статус: UI **PHASE 4** реализован, но для его production write path требуется подготовленный upgrade 0004 на Supabase Data API. До ручного применения и проверки upgrade административный runtime считается fail-closed. В Supabase существуют один рабочий DRAFT и immutable PUBLISHED history; публичная анкета продолжает читать только последний PUBLISHED snapshot.
 
 ## Локальный запуск
 
@@ -37,7 +37,7 @@ npx drizzle-kit check
 
 ## Database layer
 
-Используются PostgreSQL, Drizzle ORM, `postgres.js` и Zod. Drizzle сохраняет схему в TypeScript и генерирует проверяемые SQL migrations; `postgres.js` подходит для обычного PostgreSQL/Supabase и запускается с отключёнными prepared statements, что совместимо с transaction pooler. Database client находится только в server-only слое.
+Используются PostgreSQL, Drizzle ORM, `postgres.js`, официальный `@supabase/supabase-js` и Zod. Drizzle сохраняет схему и migration history. Стабильный public read runtime остаётся на server-only `postgres.js` через Transaction pooler. Admin runtime использует server-only Supabase client и узкие Postgres RPC; service-role credential не передаётся в браузер.
 
 Доступные команды:
 
@@ -50,33 +50,23 @@ npm run db:seed          # runtime connection: TRANSACTION_DATABASE_URL
 npm run db:verify        # read-only проверка schema и DRAFT
 ```
 
-Runtime использует только `TRANSACTION_DATABASE_URL`; client работает с `prepare: false`. `DIRECT_DATABASE_URL` и `DATABASE_URL` зарезервированы для migration tooling и runtime-приложением не читаются. Published-конфигурация импортом не перезаписывается.
+Public runtime использует `TRANSACTION_DATABASE_URL`. Все admin reads и writes направляются через Supabase Data API (`SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`) в domain RPC. Каждый составной write выполняется внутри одной Postgres RPC transaction, а повторный автоматический запуск после transport error запрещён. `ADMIN_DATABASE_URL` и временный write probe удалены; `DIRECT_DATABASE_URL` и `DATABASE_URL` зарезервированы только для migration tooling.
 
 ## Supabase после PHASE 2
 
 Первоначальные schema и DRAFT уже загружены. Повторно запускать migrations, bootstrap или seed chunks в этой базе нельзя.
 
-1. Локальный и Vercel runtime получают Transaction pooler URI только через `TRANSACTION_DATABASE_URL`.
-2. Direct/Session URI могут задаваться как `DIRECT_DATABASE_URL`/`DATABASE_URL` только для контролируемых migration workflows.
-3. Одноразовые SQL Editor инструкции сохранены в `scripts/supabase-bootstrap/` и `scripts/supabase-seed/` для аудита и восстановления пустой базы.
-4. PUBLISHED проверяется read-only командами `npm run db:verify-published` и `npm run test:db:published`; initial publish повторно запускать нельзя.
+1. Локальный и Vercel public read runtime получают Transaction pooler URI только через `TRANSACTION_DATABASE_URL`.
+2. Admin runtime требует server-only `SUPABASE_URL` и `SUPABASE_SERVICE_ROLE_KEY`; имена с префиксом `NEXT_PUBLIC_` запрещены.
+3. Domain RPC upgrade 0004 применён вручную и проверен: 16 функций доступны только `service_role`, RLS включён на 17 таблицах, migration зарегистрирована. Chunks из `scripts/supabase-upgrades/0004-admin-data-api/` повторно запускать нельзя.
+4. Direct migration URI задаётся как `DIRECT_DATABASE_URL`/`DATABASE_URL` только для контролируемых migration workflows.
+5. Одноразовые bootstrap/seed SQL сохранены для аудита и восстановления пустой базы. PUBLISHED initial publish повторно запускать нельзя.
 
 Upgrade PHASE 2.5 уже применён: файлы из `scripts/supabase-upgrades/0002-typed-rules/`, затем `scripts/supabase-seed-rules/` были выполнены вручную и проверены. Эти одноразовые chunks повторно запускать нельзя; они сохранены для аудита и восстановления новой пустой базы.
 
-Upgrade PHASE 4 `0003_workable_leopardon.sql` также применён и зарегистрирован как четвёртая Drizzle migration. Chunks из `scripts/supabase-upgrades/0003-phase4-admin/` повторно запускать нельзя.
+Upgrade PHASE 4 `0003_workable_leopardon.sql` применён и зарегистрирован как четвёртая Drizzle migration. Chunks из `scripts/supabase-upgrades/0003-phase4-admin/` повторно запускать нельзя. `0004_admin-data-api.sql` также применён и зарегистрирован как пятая migration; его SQL Editor chunks повторно запускать нельзя.
 
-## Initial admin bootstrap
-
-Первый ADMIN создаётся только явной локальной командой. Пароль не передаётся аргументом командной строки и не выводится:
-
-```powershell
-# задать только в текущем локальном shell, не в tracked-файлах
-$env:INITIAL_ADMIN_LOGIN = "vermichel"
-$env:INITIAL_ADMIN_PASSWORD = "<new secret of at least 14 characters>"
-npm run admin:create-initial
-```
-
-Команда откажется работать, если в базе уже существует хотя бы один admin user. Для runtime также обязателен независимый `ADMIN_SECURITY_SECRET` длиной не менее 32 символов; он используется для HMAC throttle identifiers и не должен совпадать с паролем.
+Первый ADMIN уже создан. Для admin runtime обязателен независимый `ADMIN_SECURITY_SECRET` длиной не менее 32 символов; он используется для HMAC throttle identifiers и не должен совпадать с паролем или service-role credential.
 
 Шаблон переменных находится в `.env.example`. Все реальные `.env`, `.env.local` и `.env.production` игнорируются Git.
 
@@ -95,11 +85,11 @@ npm run admin:create-initial
 - Tailwind CSS 4;
 - ESLint.
 - PostgreSQL schema + Drizzle ORM;
-- `postgres.js` server-only connection;
+- `postgres.js` для public read runtime и Supabase Data API/Postgres RPC для admin runtime;
 - Zod validation;
 - read-only OOXML importer и immutable seed snapshot.
 
-Admin UI/auth, последующие publish workflows, PDF и реальные opportunities остаются в следующих фазах.
+Admin Data API upgrade должен быть вручную применён и проверен до признания PHASE 4 production-ready. PDF остаётся следующей фазой.
 
 ## Public runtime PHASE 3
 
