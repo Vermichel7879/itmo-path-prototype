@@ -1,0 +1,450 @@
+import "server-only";
+
+import { z } from "zod";
+
+import { requireCapability, type AdminRole } from "@/lib/auth/permissions";
+import {
+  type CareerImport,
+  validateCareerImport,
+} from "@/lib/db/import/import-model";
+import { AdminDataApiError } from "@/lib/supabase/admin-rpc";
+
+import { adminDataApi } from "./data-api";
+import { validateDraftCareerConfig } from "./validation";
+import { assertExpectedRevision } from "./concurrency";
+
+const timestampToken = z.iso.datetime({ offset: true });
+const stableId = z.string().trim().regex(/^[A-Z][A-Z0-9_]{0,99}$/);
+
+export const draftMutationSchema = z.discriminatedUnion("entityType", [
+  z.object({
+    entityType: z.literal("QUESTION_CREATE"),
+    stableId: z.string().regex(/^Q\d+$/),
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      block: z.string().trim().min(1),
+      text: z.string().trim().min(1),
+      selectionType: z.enum(["SINGLE", "MULTI"]),
+      minSelect: z.number().int().nonnegative(),
+      maxSelect: z.number().int().positive(),
+      required: z.boolean(),
+      sortOrder: z.number().int().positive(),
+      showCondition: z.object({ expression: z.literal("entrepreneur_signal = true") }).nullable(),
+      firstAnswer: z.object({ stableId: z.string().regex(/^Q\d+_A\d+$/), text: z.string().trim().min(1) }),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("ANSWER_CREATE"),
+    stableId: z.string().regex(/^Q\d+_A\d+$/),
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      questionStableId: z.string().regex(/^Q\d+$/),
+      text: z.string().trim().min(1),
+      sortOrder: z.number().int().positive(),
+      tags: z.array(z.string().trim().min(1)).default([]),
+      keys: z.array(z.string().trim().min(1)).default([]),
+      active: z.boolean().default(true),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("RECOMMENDATION_CREATE"),
+    stableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      type: z.enum(["CKO_SERVICE", "EVENT", "CLUB", "FACULTY", "GENERAL"]),
+      title: z.string().trim().min(1),
+      description: z.string().trim().min(1),
+      url: z.url().nullable(),
+      status: z.enum(["ACTIVE", "SLOT", "INACTIVE"]),
+      tags: z.array(z.string().trim().min(1)).default([]),
+      priorityTags: z.array(z.string().trim().min(1)).default([]),
+      active: z.boolean().default(true),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("QUESTION"),
+    stableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      text: z.string().trim().min(1).optional(),
+      block: z.string().trim().min(1).optional(),
+      minSelect: z.number().int().nonnegative().optional(),
+      maxSelect: z.number().int().positive().optional(),
+      required: z.boolean().optional(),
+      sortOrder: z.number().int().positive().optional(),
+      active: z.boolean().optional(),
+      showCondition: z.object({ expression: z.string().trim().min(1) }).nullable().optional(),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("ANSWER"),
+    stableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      text: z.string().trim().min(1).optional(),
+      sortOrder: z.number().int().positive().optional(),
+      tags: z.array(z.string().trim().min(1)).optional(),
+      keys: z.array(z.string().trim().min(1)).optional(),
+      active: z.boolean().optional(),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("MODULE"),
+    stableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      name: z.string().trim().min(1).optional(),
+      goal: z.string().trim().min(1).optional(),
+      step1: z.string().trim().min(1).optional(),
+      step2: z.string().trim().min(1).optional(),
+      step3: z.string().trim().min(1).optional(),
+      checkpoint: z.string().trim().min(1).optional(),
+      constraints: z.string().trim().optional(),
+      sortOrder: z.number().int().positive().optional(),
+      active: z.boolean().optional(),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("RECOMMENDATION"),
+    stableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      title: z.string().trim().min(1).optional(),
+      description: z.string().trim().min(1).optional(),
+      url: z.url().nullable().optional(),
+      status: z.enum(["ACTIVE", "SLOT", "INACTIVE"]).optional(),
+      tags: z.array(z.string().trim().min(1)).optional(),
+      priorityTags: z.array(z.string().trim().min(1)).optional(),
+      active: z.boolean().optional(),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("OPPORTUNITY"),
+    stableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      type: z.enum(["EVENT", "CLUB", "FACULTY", "PRACTICE", "INTERNSHIP", "OTHER"]).optional(),
+      title: z.string().trim().min(1).optional(),
+      description: z.string().trim().min(1).optional(),
+      url: z.url().nullable().optional(),
+      startsAt: timestampToken.nullable().optional(),
+      endsAt: timestampToken.nullable().optional(),
+      validFrom: timestampToken.nullable().optional(),
+      validTo: timestampToken.nullable().optional(),
+      tags: z.array(z.string().trim().min(1)).optional(),
+      active: z.boolean().optional(),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("WEIGHT"),
+    stableId: z.string().regex(/^[A-Z0-9_]+:[A-Z0-9_]+$/),
+    expectedUpdatedAt: timestampToken,
+    values: z.object({ weight: z.number().int().min(-10).max(10) }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("RULE"),
+    stableId: z.string().regex(/^R(0[1-9]|1[0-7])$/),
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      sourceTitle: z.string().trim().min(1).optional(),
+      sourceContent: z.string().trim().min(1).optional(),
+      params: z.unknown().optional(),
+      active: z.boolean().optional(),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("MODIFIER"),
+    stableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      effect: z.unknown().optional(),
+      operationParams: z.unknown().optional(),
+      active: z.boolean().optional(),
+    }).strict(),
+  }),
+]);
+
+export type DraftMutation = z.infer<typeof draftMutationSchema>;
+
+export class DraftConflictError extends Error {
+  readonly status = 409;
+  constructor() {
+    super("DRAFT_STALE_REVISION");
+    this.name = "DraftConflictError";
+  }
+}
+
+export async function getCurrentDraftConfig() {
+  const draft = await adminDataApi.getDraft();
+  const snapshot = validateCareerImport(draft.snapshot);
+  return {
+    id: draft.id,
+    updatedAt: draft.updatedAt,
+    snapshotHash: draft.snapshotHash,
+    snapshot,
+    validation: validateDraftCareerConfig(snapshot),
+  };
+}
+
+export function applyDraftMutationToSnapshot(
+  current: CareerImport,
+  mutation: DraftMutation,
+): CareerImport {
+  const snapshot = structuredClone(current);
+  const required = <T extends { stableId: string }>(
+    collection: T[],
+    stableIdValue: string,
+    error: string,
+  ) => {
+    const entity = collection.find((item) => item.stableId === stableIdValue);
+    if (!entity) throw new Error(error);
+    return entity;
+  };
+
+  switch (mutation.entityType) {
+    case "QUESTION_CREATE": {
+      if (!mutation.values.firstAnswer.stableId.startsWith(`${mutation.stableId}_A`)) {
+        throw new Error("ANSWER_ID_QUESTION_MISMATCH");
+      }
+      snapshot.questions.push({
+        stableId: mutation.stableId,
+        block: mutation.values.block,
+        text: mutation.values.text,
+        selectionType: mutation.values.selectionType,
+        minSelect: mutation.values.minSelect,
+        maxSelect: mutation.values.maxSelect,
+        required: mutation.values.required,
+        sortOrder: mutation.values.sortOrder,
+        showCondition: mutation.values.showCondition,
+        active: true,
+      });
+      snapshot.answers.push({
+        stableId: mutation.values.firstAnswer.stableId,
+        questionStableId: mutation.stableId,
+        text: mutation.values.firstAnswer.text,
+        sortOrder: 1,
+        tags: [],
+        keys: [],
+        active: true,
+      });
+      break;
+    }
+    case "ANSWER_CREATE": {
+      if (!mutation.stableId.startsWith(`${mutation.values.questionStableId}_A`)) {
+        throw new Error("ANSWER_ID_QUESTION_MISMATCH");
+      }
+      required(
+        snapshot.questions,
+        mutation.values.questionStableId,
+        "QUESTION_NOT_FOUND",
+      );
+      snapshot.answers.push({
+        stableId: mutation.stableId,
+        questionStableId: mutation.values.questionStableId,
+        text: mutation.values.text,
+        sortOrder: mutation.values.sortOrder,
+        tags: mutation.values.tags,
+        keys: mutation.values.keys,
+        active: mutation.values.active,
+      });
+      break;
+    }
+    case "RECOMMENDATION_CREATE": {
+      snapshot.recommendations.push({
+        stableId: mutation.stableId,
+        ...mutation.values,
+      });
+      break;
+    }
+    case "QUESTION": {
+      Object.assign(
+        required(snapshot.questions, mutation.stableId, "QUESTION_NOT_FOUND"),
+        mutation.values,
+      );
+      break;
+    }
+    case "ANSWER": {
+      Object.assign(
+        required(snapshot.answers, mutation.stableId, "ANSWER_NOT_FOUND"),
+        mutation.values,
+      );
+      break;
+    }
+    case "MODULE": {
+      const careerModule = required(
+        snapshot.modules,
+        mutation.stableId,
+        "MODULE_NOT_FOUND",
+      );
+      const { step1, step2, step3, ...values } = mutation.values;
+      Object.assign(careerModule, values);
+      if (step1 !== undefined) careerModule.steps[0] = step1;
+      if (step2 !== undefined) careerModule.steps[1] = step2;
+      if (step3 !== undefined) careerModule.steps[2] = step3;
+      break;
+    }
+    case "RECOMMENDATION": {
+      Object.assign(
+        required(
+          snapshot.recommendations,
+          mutation.stableId,
+          "RECOMMENDATION_NOT_FOUND",
+        ),
+        mutation.values,
+      );
+      break;
+    }
+    case "OPPORTUNITY": {
+      const opportunity = snapshot.opportunities.find(
+        (item) => item.stableId === mutation.stableId,
+      );
+      if (opportunity) {
+        Object.assign(opportunity, mutation.values);
+      } else {
+        const values = mutation.values;
+        if (!values.type || !values.title || !values.description) {
+          throw new Error("OPPORTUNITY_CREATE_FIELDS_REQUIRED");
+        }
+        snapshot.opportunities.push({
+          stableId: mutation.stableId,
+          type: values.type,
+          title: values.title,
+          description: values.description,
+          url: values.url ?? null,
+          startsAt: values.startsAt ?? null,
+          endsAt: values.endsAt ?? null,
+          validFrom: values.validFrom ?? null,
+          validTo: values.validTo ?? null,
+          tags: values.tags ?? [],
+          active: values.active ?? true,
+        });
+      }
+      break;
+    }
+    case "WEIGHT": {
+      const [answerStableId, moduleStableId] = mutation.stableId.split(":");
+      const answer = snapshot.answers.find((item) => item.stableId === answerStableId);
+      const careerModule = snapshot.modules.find(
+        (item) => item.stableId === moduleStableId,
+      );
+      if (!answer || !careerModule) throw new Error("WEIGHT_REFERENCE_NOT_FOUND");
+      const mapping = snapshot.mappings.find(
+        (item) =>
+          item.answerStableId === answerStableId &&
+          item.moduleStableId === moduleStableId,
+      );
+      if (mapping) {
+        mapping.weight = mutation.values.weight;
+      } else {
+        snapshot.mappings.push({
+          answerStableId,
+          questionStableId: answer.questionStableId,
+          moduleStableId,
+          weight: mutation.values.weight,
+        });
+      }
+      break;
+    }
+    case "RULE": {
+      Object.assign(
+        required(snapshot.engineRules, mutation.stableId, "RULE_NOT_FOUND"),
+        mutation.values,
+      );
+      break;
+    }
+    case "MODIFIER": {
+      const modifier = required(
+        snapshot.modifiers,
+        mutation.stableId,
+        "MODIFIER_NOT_FOUND",
+      );
+      if (mutation.values.effect !== undefined) {
+        modifier.effect = mutation.values.effect as typeof modifier.effect;
+      }
+      if (mutation.values.operationParams !== undefined) {
+        modifier.operation = {
+          ...modifier.operation,
+          params: mutation.values.operationParams,
+        } as typeof modifier.operation;
+      }
+      if (mutation.values.active !== undefined) {
+        modifier.active = mutation.values.active;
+      }
+      break;
+    }
+  }
+  return validateCareerImport(snapshot);
+}
+
+export async function mutateCurrentDraft(input: {
+  actorUserId: string;
+  role: AdminRole;
+  mutation: DraftMutation;
+}) {
+  const capability = ["WEIGHT", "RULE", "MODIFIER"].includes(input.mutation.entityType) ||
+    (input.mutation.entityType === "MODULE" && input.mutation.values.sortOrder !== undefined)
+    ? "LOGIC_EDIT"
+    : "CONTENT_EDIT";
+  requireCapability(input.role, capability);
+  const draft = await getCurrentDraftConfig();
+  try {
+    assertExpectedRevision(new Date(draft.updatedAt), input.mutation.expectedUpdatedAt);
+  } catch {
+    throw new DraftConflictError();
+  }
+  const snapshot = applyDraftMutationToSnapshot(draft.snapshot, input.mutation);
+  const validation = validateDraftCareerConfig(snapshot);
+  if (!validation.valid) throw new Error("DRAFT_MUTATION_INVALID_CONFIG");
+  let result: Awaited<ReturnType<typeof adminDataApi.mutateDraft>>;
+  try {
+    result = await adminDataApi.mutateDraft({
+      actorUserId: input.actorUserId,
+      expectedUpdatedAt: input.mutation.expectedUpdatedAt,
+      expectedSnapshotHash: draft.snapshotHash,
+      mutation: input.mutation,
+      nextSnapshot: snapshot,
+      audit: {
+        changedFields: Object.keys(input.mutation.values),
+        previous: snapshotEntityValues(draft.snapshot, input.mutation),
+        next: input.mutation.values,
+      },
+    });
+  } catch (error) {
+    if (
+      error instanceof AdminDataApiError &&
+      error.message === "DRAFT_STALE_REVISION"
+    ) {
+      throw new DraftConflictError();
+    }
+    throw error;
+  }
+  return { ...result, validation };
+}
+
+function snapshotEntityValues(
+  snapshot: ReturnType<typeof validateCareerImport>,
+  mutation: DraftMutation,
+) {
+  if (mutation.entityType === "WEIGHT") {
+    const [answerStableId, moduleStableId] = mutation.stableId.split(":");
+    const current = snapshot.mappings.find((item) => item.answerStableId === answerStableId && item.moduleStableId === moduleStableId);
+    return current ? { weight: current.weight } : null;
+  }
+  if (
+    mutation.entityType === "QUESTION_CREATE" ||
+    mutation.entityType === "ANSWER_CREATE" ||
+    mutation.entityType === "RECOMMENDATION_CREATE"
+  ) return null;
+  const collections = {
+    QUESTION: snapshot.questions,
+    ANSWER: snapshot.answers,
+    MODULE: snapshot.modules,
+    RECOMMENDATION: snapshot.recommendations,
+    OPPORTUNITY: snapshot.opportunities,
+    RULE: snapshot.engineRules,
+    MODIFIER: snapshot.modifiers,
+  } as const;
+  const current = (collections[mutation.entityType] as ReadonlyArray<{ stableId: string }>).find((item) => item.stableId === mutation.stableId) as Record<string, unknown> | undefined;
+  if (!current) return null;
+  return Object.fromEntries(Object.keys(mutation.values).map((key) => [key, current[key] ?? null]));
+}

@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1787505965865,
+      "tag": "0000_ambiguous_human_torch",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1787505995250,
+      "tag": "0001_immutable-published-config",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787522747953,
+      "tag": "0002_slimy_zarek",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1787567239361,
+      "tag": "0003_workable_leopardon",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1787588242530,
+      "tag": "0004_admin-data-api",
+      "breakpoints": true
+    }
+  ]
+}
