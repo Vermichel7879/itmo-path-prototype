@@ -13,11 +13,11 @@ import { TrajectoryTimeline } from "./trajectory-timeline";
 export function ResultClient({ configVersionId }: { configVersionId: string | null }) {
   const router = useRouter();
   const journey = useCareerJourney();
-  const [showPdfToast, setShowPdfToast] = useState(false);
+  const [pdfState, setPdfState] = useState<"idle" | "loading" | "error">("idle");
   const [loadError, setLoadError] = useState(false);
   const requestedVersion = useRef<string | null>(null);
   const { initializeVersion, setTrajectoryResult } = journey;
-  const dismissPdfToast = useCallback(() => setShowPdfToast(false), []);
+  const dismissPdfToast = useCallback(() => setPdfState("idle"), []);
 
   useEffect(() => {
     if (!configVersionId) router.replace("/questionnaire");
@@ -52,6 +52,30 @@ export function ResultClient({ configVersionId }: { configVersionId: string | nu
   }
 
   const result = journey.result?.configVersionId === configVersionId ? journey.result : null;
+
+  async function downloadPdf() {
+    if (!result || pdfState === "loading") return;
+    setPdfState("loading");
+    try {
+      const { renderTrajectoryPdfBlob } = await import(
+        "@/lib/pdf/trajectory-pdf-browser"
+      );
+      const objectUrl = URL.createObjectURL(
+        await renderTrajectoryPdfBlob(result),
+      );
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = `career-trajectory-${result.primaryModule.id}.pdf`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 0);
+      setPdfState("idle");
+    } catch {
+      setPdfState("error");
+    }
+  }
+
   if (loadError) return <main className="flex min-h-screen items-center justify-center bg-zinc-50 px-5 text-center"><div><p className="text-zinc-700">Не удалось открыть результат.</p><button type="button" className="button-secondary mt-5" onClick={() => router.replace("/questionnaire")}>Вернуться к анкете</button></div></main>;
   if (!journey.hydrated || !result) return <main className="flex min-h-screen items-center justify-center bg-zinc-50"><p className="text-sm text-zinc-500">Открываем результат…</p></main>;
 
@@ -72,11 +96,11 @@ export function ResultClient({ configVersionId }: { configVersionId: string | nu
             <SupportModules modules={result.supportModules} />
             <RecommendationCards recommendations={result.recommendations} />
           </div>
-          <aside className="order-1 lg:sticky lg:top-6 lg:order-2" aria-label="Краткое резюме траектории"><div className="summary-card"><h2 className="text-lg font-semibold text-zinc-950">Твоя траектория</h2><dl className="mt-6 space-y-5"><div><dt className="summary-card__label">Главный фокус</dt><dd className="mt-1 font-semibold text-zinc-950">{result.primaryModule.name}</dd></div><div><dt className="summary-card__label">Дополнительно</dt><dd className="mt-1 text-sm leading-6 text-zinc-700">{result.supportModules.length ? result.supportModules.map((module) => module.name).join(" · ") : "Не требуется"}</dd></div><div><dt className="summary-card__label">Темп</dt><dd className="mt-1 font-semibold text-zinc-950">{result.pace?.text ?? "Не указан"}</dd></div><div><dt className="summary-card__label">Ориентиры</dt><dd className="mt-2 flex flex-wrap gap-1.5">{result.priorities.map((priority) => <span key={priority} className="rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-700">{priority}</span>)}</dd></div></dl><button type="button" onClick={() => setShowPdfToast(true)} className="button-secondary mt-7 w-full">Скачать PDF</button><p className="mt-2 text-center text-xs leading-5 text-zinc-500">PDF будет доступен в следующей версии</p></div></aside>
+          <aside className="order-1 lg:sticky lg:top-6 lg:order-2" aria-label="Краткое резюме траектории"><div className="summary-card"><h2 className="text-lg font-semibold text-zinc-950">Твоя траектория</h2><dl className="mt-6 space-y-5"><div><dt className="summary-card__label">Главный фокус</dt><dd className="mt-1 font-semibold text-zinc-950">{result.primaryModule.name}</dd></div><div><dt className="summary-card__label">Дополнительно</dt><dd className="mt-1 text-sm leading-6 text-zinc-700">{result.supportModules.length ? result.supportModules.map((module) => module.name).join(" · ") : "Не требуется"}</dd></div><div><dt className="summary-card__label">Темп</dt><dd className="mt-1 font-semibold text-zinc-950">{result.pace?.text ?? "Не указан"}</dd></div><div><dt className="summary-card__label">Ориентиры</dt><dd className="mt-2 flex flex-wrap gap-1.5">{result.priorities.map((priority) => <span key={priority} className="rounded-md bg-zinc-100 px-2 py-1 text-xs text-zinc-700">{priority}</span>)}</dd></div></dl><button type="button" onClick={downloadPdf} disabled={pdfState === "loading"} className="button-primary mt-7 w-full">{pdfState === "loading" ? "Готовим PDF…" : "Скачать PDF"}</button><p className="mt-2 text-center text-xs leading-5 text-zinc-500">A4 · 3 страницы · готово к печати</p></div></aside>
         </div>
         <p className="mx-auto mt-10 max-w-3xl text-center text-sm leading-6 text-zinc-500">{result.disclaimer}</p>
       </main>
-      {showPdfToast ? <Toast title="PDF пока не подключён" message="Он будет доступен в следующей версии. Сейчас результат можно посмотреть на этой странице." onDismiss={dismissPdfToast} /> : null}
+      {pdfState === "error" ? <Toast title="Не удалось скачать PDF" message="Попробуйте ещё раз. Текущий результат останется на странице." onDismiss={dismissPdfToast} /> : null}
     </div>
   );
 }
