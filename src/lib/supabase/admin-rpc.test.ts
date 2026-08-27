@@ -48,6 +48,20 @@ describe("admin Data API RPC boundary", () => {
     ).rejects.toEqual(new AdminDataApiError(message, "P0001"));
   });
 
+  it.each([
+    "MODULE_RECOMMENDATION_ALREADY_EXISTS",
+    "MODULE_RECOMMENDATION_AUDIENCE_INCOMPATIBLE",
+    "MODULE_RECOMMENDATION_NOT_FOUND",
+    "RECOMMENDATION_NOT_FOUND",
+  ])("preserves the safe module recommendation error %s", async (message) => {
+    const client: AdminRpcClient = {
+      rpc: async () => ({ data: null, error: { code: "P0001", message } }),
+    };
+    await expect(
+      callAdminRpc("admin_mutate_module_recommendation", {}, z.unknown(), client),
+    ).rejects.toEqual(new AdminDataApiError(message, "P0001"));
+  });
+
   it("replaces unknown PostgREST messages with a safe generic error", async () => {
     const client: AdminRpcClient = {
       rpc: async () => ({

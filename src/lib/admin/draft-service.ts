@@ -17,6 +17,7 @@ const timestampToken = z.iso.datetime({ offset: true });
 const stableId = z.string().trim().regex(/^[A-Z][A-Z0-9_]{0,99}$/);
 const mappingStableId = z.string().regex(/^[A-Z0-9_]+:[A-Z0-9_]+$/);
 const mappingWeight = z.number().int().min(-10).max(10);
+const moduleRecommendationPriority = z.number().int().positive();
 
 export const draftMutationSchema = z.discriminatedUnion("entityType", [
   z.object({
@@ -166,6 +167,21 @@ export const draftMutationSchema = z.discriminatedUnion("entityType", [
     values: z.object({}).strict(),
   }),
   z.object({
+    entityType: z.enum([
+      "MODULE_RECOMMENDATION_CREATE",
+      "MODULE_RECOMMENDATION_UPDATE",
+    ]),
+    stableId: mappingStableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({ priority: moduleRecommendationPriority }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("MODULE_RECOMMENDATION_DELETE"),
+    stableId: mappingStableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({}).strict(),
+  }),
+  z.object({
     entityType: z.literal("RULE"),
     stableId: z.string().regex(/^R(0[1-9]|1[0-7])$/),
     expectedUpdatedAt: timestampToken,
@@ -244,6 +260,30 @@ export function applyDraftMutationToSnapshot(
       throw new Error("MAPPING_AUDIENCE_INCOMPATIBLE");
     }
     return { answer, careerModule };
+  };
+  const moduleRecommendationReferences = (
+    stableIdValue: string,
+    checkAudience: boolean,
+  ) => {
+    const [moduleStableId, recommendationStableId] = stableIdValue.split(":");
+    const careerModule = snapshot.modules.find(
+      (item) => item.stableId === moduleStableId,
+    );
+    if (!careerModule) throw new Error("MODULE_NOT_FOUND");
+    const recommendation = snapshot.recommendations.find(
+      (item) => item.stableId === recommendationStableId,
+    );
+    if (!recommendation) throw new Error("RECOMMENDATION_NOT_FOUND");
+    if (
+      checkAudience &&
+      !(
+        (careerModule.forBachelor && recommendation.forBachelor) ||
+        (careerModule.forMaster && recommendation.forMaster)
+      )
+    ) {
+      throw new Error("MODULE_RECOMMENDATION_AUDIENCE_INCOMPATIBLE");
+    }
+    return { careerModule, recommendation };
   };
 
   switch (mutation.entityType) {
@@ -433,6 +473,55 @@ export function applyDraftMutationToSnapshot(
       snapshot.mappings.splice(index, 1);
       break;
     }
+    case "MODULE_RECOMMENDATION_CREATE": {
+      const { careerModule, recommendation } = moduleRecommendationReferences(
+        mutation.stableId,
+        true,
+      );
+      if (
+        snapshot.moduleRecommendations.some(
+          (item) =>
+            item.moduleStableId === careerModule.stableId &&
+            item.recommendationStableId === recommendation.stableId,
+        )
+      ) {
+        throw new Error("MODULE_RECOMMENDATION_ALREADY_EXISTS");
+      }
+      snapshot.moduleRecommendations.push({
+        moduleStableId: careerModule.stableId,
+        recommendationStableId: recommendation.stableId,
+        priority: mutation.values.priority,
+      });
+      break;
+    }
+    case "MODULE_RECOMMENDATION_UPDATE": {
+      const { careerModule, recommendation } = moduleRecommendationReferences(
+        mutation.stableId,
+        true,
+      );
+      const link = snapshot.moduleRecommendations.find(
+        (item) =>
+          item.moduleStableId === careerModule.stableId &&
+          item.recommendationStableId === recommendation.stableId,
+      );
+      if (!link) throw new Error("MODULE_RECOMMENDATION_NOT_FOUND");
+      link.priority = mutation.values.priority;
+      break;
+    }
+    case "MODULE_RECOMMENDATION_DELETE": {
+      const { careerModule, recommendation } = moduleRecommendationReferences(
+        mutation.stableId,
+        false,
+      );
+      const index = snapshot.moduleRecommendations.findIndex(
+        (item) =>
+          item.moduleStableId === careerModule.stableId &&
+          item.recommendationStableId === recommendation.stableId,
+      );
+      if (index < 0) throw new Error("MODULE_RECOMMENDATION_NOT_FOUND");
+      snapshot.moduleRecommendations.splice(index, 1);
+      break;
+    }
     case "RULE": {
       Object.assign(
         required(snapshot.engineRules, mutation.stableId, "RULE_NOT_FOUND"),
@@ -474,6 +563,9 @@ export async function mutateCurrentDraft(input: {
     "MAPPING_CREATE",
     "MAPPING_UPDATE",
     "MAPPING_DELETE",
+    "MODULE_RECOMMENDATION_CREATE",
+    "MODULE_RECOMMENDATION_UPDATE",
+    "MODULE_RECOMMENDATION_DELETE",
     "RULE",
     "MODIFIER",
   ].includes(input.mutation.entityType) ||
@@ -498,37 +590,32 @@ export async function mutateCurrentDraft(input: {
         : input.mutation.entityType === "MAPPING_DELETE"
           ? "DELETE"
           : null;
+  const moduleRecommendationOperation =
+    input.mutation.entityType === "MODULE_RECOMMENDATION_CREATE"
+      ? "CREATE"
+      : input.mutation.entityType === "MODULE_RECOMMENDATION_UPDATE"
+        ? "UPDATE"
+        : input.mutation.entityType === "MODULE_RECOMMENDATION_DELETE"
+          ? "DELETE"
+          : null;
+  const relationOperation = mappingOperation ?? moduleRecommendationOperation;
   const audit = {
-    operation: mappingOperation,
+    operation: relationOperation,
     changedFields: Object.keys(input.mutation.values),
     previous: snapshotEntityValues(draft.snapshot, input.mutation),
-    next: mappingOperation === "DELETE" ? null : input.mutation.values,
+    next: relationOperation === "DELETE" ? null : input.mutation.values,
   };
+  const { expectedUpdatedAt: _expectedUpdatedAt, ...compactMutation } =
+    input.mutation;
   let result: Awaited<ReturnType<typeof adminDataApi.mutateDraft>>;
   try {
-    if (mappingOperation) {
-      const [answerStableId, moduleStableId] = input.mutation.stableId.split(":");
-      result = await adminDataApi.mutateMapping({
-        actorUserId: input.actorUserId,
-        expectedUpdatedAt: input.mutation.expectedUpdatedAt,
-        expectedSnapshotHash: draft.snapshotHash,
-        operation: mappingOperation,
-        answerStableId,
-        moduleStableId,
-        weight: "weight" in input.mutation.values ? input.mutation.values.weight : null,
-        nextSnapshot: snapshot,
-        audit,
-      });
-    } else {
-      result = await adminDataApi.mutateDraft({
-        actorUserId: input.actorUserId,
-        expectedUpdatedAt: input.mutation.expectedUpdatedAt,
-        expectedSnapshotHash: draft.snapshotHash,
-        mutation: input.mutation,
-        nextSnapshot: snapshot,
-        audit,
-      });
-    }
+    result = await adminDataApi.mutateDraft({
+      actorUserId: input.actorUserId,
+      expectedUpdatedAt: input.mutation.expectedUpdatedAt,
+      expectedSnapshotHash: draft.snapshotHash,
+      mutation: compactMutation,
+      audit,
+    });
   } catch (error) {
     if (
       error instanceof AdminDataApiError &&
@@ -554,6 +641,19 @@ function snapshotEntityValues(
     const [answerStableId, moduleStableId] = mutation.stableId.split(":");
     const current = snapshot.mappings.find((item) => item.answerStableId === answerStableId && item.moduleStableId === moduleStableId);
     return current ? { weight: current.weight } : null;
+  }
+  if (
+    mutation.entityType === "MODULE_RECOMMENDATION_CREATE" ||
+    mutation.entityType === "MODULE_RECOMMENDATION_UPDATE" ||
+    mutation.entityType === "MODULE_RECOMMENDATION_DELETE"
+  ) {
+    const [moduleStableId, recommendationStableId] = mutation.stableId.split(":");
+    const current = snapshot.moduleRecommendations.find(
+      (item) =>
+        item.moduleStableId === moduleStableId &&
+        item.recommendationStableId === recommendationStableId,
+    );
+    return current ? { priority: current.priority } : null;
   }
   if (
     mutation.entityType === "QUESTION_CREATE" ||

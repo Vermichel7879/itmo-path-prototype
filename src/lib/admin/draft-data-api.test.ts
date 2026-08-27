@@ -63,6 +63,18 @@ describe("canonical draft mutation", () => {
     expect(next.questions[0]).toMatchObject({ forBachelor: true, forMaster: true });
   });
 
+  it("never changes a separate PUBLISHED snapshot while preparing a DRAFT mutation", () => {
+    const published = currentConfig();
+    const publishedBefore = structuredClone(published);
+    applyDraftMutationToSnapshot(currentConfig(), {
+      entityType: "QUESTION",
+      stableId: "Q1",
+      expectedUpdatedAt,
+      values: { text: "DRAFT only" },
+    });
+    expect(published).toEqual(publishedBefore);
+  });
+
   it("creates, updates, and deletes only the selected mapping", () => {
     const current = currentConfig();
     const stableId = "Q4_A1:M01";
@@ -194,7 +206,7 @@ describe("mapping mutation orchestration", () => {
       snapshotHash: "a".repeat(64),
       snapshot,
     });
-    return vi.spyOn(adminDataApi, "mutateMapping").mockResolvedValue({
+    return vi.spyOn(adminDataApi, "mutateDraft").mockResolvedValue({
       id: draftId,
       updatedAt: "2026-08-24T12:01:00.000Z",
     });
@@ -213,17 +225,11 @@ describe("mapping mutation orchestration", () => {
       },
     });
     expect(mutateMapping).toHaveBeenCalledWith(expect.objectContaining({
-      operation: "CREATE",
-      answerStableId: "Q4_A1",
-      moduleStableId: "M01",
-      weight: 7,
-      nextSnapshot: expect.objectContaining({
-        mappings: expect.arrayContaining([expect.objectContaining({
-          answerStableId: "Q4_A1",
-          moduleStableId: "M01",
-          weight: 7,
-        })]),
-      }),
+      mutation: {
+        entityType: "MAPPING_CREATE",
+        stableId: "Q4_A1:M01",
+        values: { weight: 7 },
+      },
       audit: {
         operation: "CREATE",
         changedFields: ["weight"],
@@ -250,7 +256,7 @@ describe("mapping mutation orchestration", () => {
       },
     });
     expect(mutateMapping).toHaveBeenLastCalledWith(expect.objectContaining({
-      operation: "UPDATE",
+      mutation: expect.objectContaining({ entityType: "MAPPING_UPDATE" }),
       audit: {
         operation: "UPDATE",
         changedFields: ["weight"],
@@ -270,8 +276,7 @@ describe("mapping mutation orchestration", () => {
       },
     });
     expect(mutateMapping).toHaveBeenLastCalledWith(expect.objectContaining({
-      operation: "DELETE",
-      weight: null,
+      mutation: expect.objectContaining({ entityType: "MAPPING_DELETE" }),
       audit: {
         operation: "DELETE",
         changedFields: [],
@@ -282,7 +287,7 @@ describe("mapping mutation orchestration", () => {
   });
 
   it("denies EDITOR before any Data API mutation", async () => {
-    const mutateMapping = vi.spyOn(adminDataApi, "mutateMapping");
+    const mutateMapping = vi.spyOn(adminDataApi, "mutateDraft");
     await expect(mutateCurrentDraft({
       actorUserId,
       role: "EDITOR",
@@ -326,8 +331,8 @@ describe("draft revision flow", () => {
       actorUserId,
       role: "ADMIN",
       mutation: {
-        entityType: "ANSWER",
-        stableId: "Q1_A1",
+        entityType: "QUESTION",
+        stableId: "Q1",
         expectedUpdatedAt: firstRevision,
         values: { text: "Первое сохранение" },
       },
@@ -338,8 +343,8 @@ describe("draft revision flow", () => {
       actorUserId,
       role: "ADMIN",
       mutation: {
-        entityType: "ANSWER",
-        stableId: "Q1_A1",
+        entityType: "QUESTION",
+        stableId: "Q1",
         expectedUpdatedAt: firstSave.updatedAt,
         values: { text: "Второе сохранение" },
       },
@@ -363,5 +368,240 @@ describe("draft revision flow", () => {
       },
     })).rejects.toThrow("DRAFT_STALE_REVISION");
     expect(mutateDraft).not.toHaveBeenCalled();
+  });
+});
+
+describe("compact entity mutation payloads", () => {
+  const draftId = "00000000-0000-4000-8000-000000000003";
+  const actorUserId = "00000000-0000-4000-8000-000000000001";
+
+  it.each([
+    {
+      entityType: "ANSWER" as const,
+      stableId: "Q1_A1",
+      values: { text: "Обновлённый ответ" },
+    },
+    {
+      entityType: "MODULE" as const,
+      stableId: "M01",
+      values: { name: "Обновлённый модуль" },
+    },
+  ])("sends $entityType without a full snapshot", async (mutation) => {
+    vi.spyOn(adminDataApi, "getDraft").mockResolvedValue({
+      id: draftId,
+      updatedAt: expectedUpdatedAt,
+      snapshotHash: "a".repeat(64),
+      snapshot: currentConfig(),
+    });
+    const mutateDraft = vi.spyOn(adminDataApi, "mutateDraft").mockResolvedValue({
+      id: draftId,
+      updatedAt: "2026-08-24T12:01:00.000Z",
+    });
+
+    await mutateCurrentDraft({
+      actorUserId,
+      role: "ADMIN",
+      mutation: { ...mutation, expectedUpdatedAt },
+    });
+
+    expect(mutateDraft).toHaveBeenCalledWith(expect.objectContaining({
+      mutation,
+    }));
+    expect(mutateDraft.mock.calls[0][0]).not.toHaveProperty("nextSnapshot");
+  });
+});
+
+describe("module recommendation mutations", () => {
+  const draftId = "00000000-0000-4000-8000-000000000003";
+  const actorUserId = "00000000-0000-4000-8000-000000000001";
+  const linkStableId = "M01:CKO_RESUME";
+
+  function mockDraft(snapshot = currentConfig()) {
+    vi.spyOn(adminDataApi, "getDraft").mockResolvedValue({
+      id: draftId,
+      updatedAt: expectedUpdatedAt,
+      snapshotHash: "a".repeat(64),
+      snapshot,
+    });
+    return vi.spyOn(adminDataApi, "mutateDraft").mockResolvedValue({
+      id: draftId,
+      updatedAt: "2026-08-24T12:01:00.000Z",
+    });
+  }
+
+  it("creates, updates, and deletes only the selected link", () => {
+    const current = currentConfig();
+    const created = applyDraftMutationToSnapshot(current, {
+      entityType: "MODULE_RECOMMENDATION_CREATE",
+      stableId: linkStableId,
+      expectedUpdatedAt,
+      values: { priority: 7 },
+    });
+    expect(created.moduleRecommendations).toContainEqual({
+      moduleStableId: "M01",
+      recommendationStableId: "CKO_RESUME",
+      priority: 7,
+    });
+    expect(current.moduleRecommendations).not.toContainEqual(
+      expect.objectContaining({ moduleStableId: "M01", recommendationStableId: "CKO_RESUME" }),
+    );
+
+    const updated = applyDraftMutationToSnapshot(created, {
+      entityType: "MODULE_RECOMMENDATION_UPDATE",
+      stableId: linkStableId,
+      expectedUpdatedAt,
+      values: { priority: 3 },
+    });
+    expect(updated.moduleRecommendations.find(
+      (link) => `${link.moduleStableId}:${link.recommendationStableId}` === linkStableId,
+    )?.priority).toBe(3);
+
+    const deleted = applyDraftMutationToSnapshot(updated, {
+      entityType: "MODULE_RECOMMENDATION_DELETE",
+      stableId: linkStableId,
+      expectedUpdatedAt,
+      values: {},
+    });
+    expect(deleted.moduleRecommendations).toHaveLength(current.moduleRecommendations.length);
+    expect(deleted.modules.find((item) => item.stableId === "M01")).toEqual(
+      current.modules.find((item) => item.stableId === "M01"),
+    );
+    expect(deleted.recommendations.find((item) => item.stableId === "CKO_RESUME")).toEqual(
+      current.recommendations.find((item) => item.stableId === "CKO_RESUME"),
+    );
+  });
+
+  it("rejects duplicate links, invalid priority, and missing references", () => {
+    const current = currentConfig();
+    const existing = current.moduleRecommendations[0];
+    expect(() => applyDraftMutationToSnapshot(current, {
+      entityType: "MODULE_RECOMMENDATION_CREATE",
+      stableId: `${existing.moduleStableId}:${existing.recommendationStableId}`,
+      expectedUpdatedAt,
+      values: { priority: 1 },
+    })).toThrow("MODULE_RECOMMENDATION_ALREADY_EXISTS");
+    expect(draftMutationSchema.safeParse({
+      entityType: "MODULE_RECOMMENDATION_CREATE",
+      stableId: linkStableId,
+      expectedUpdatedAt,
+      values: { priority: 0 },
+    }).success).toBe(false);
+    expect(() => applyDraftMutationToSnapshot(current, {
+      entityType: "MODULE_RECOMMENDATION_CREATE",
+      stableId: "M404:CKO_RESUME",
+      expectedUpdatedAt,
+      values: { priority: 1 },
+    })).toThrow("MODULE_NOT_FOUND");
+    expect(() => applyDraftMutationToSnapshot(current, {
+      entityType: "MODULE_RECOMMENDATION_CREATE",
+      stableId: "M01:REC404",
+      expectedUpdatedAt,
+      values: { priority: 1 },
+    })).toThrow("RECOMMENDATION_NOT_FOUND");
+  });
+
+  it("rejects an audience mismatch", () => {
+    const current = currentConfig();
+    const careerModule = current.modules.find((item) => item.stableId === "M01");
+    const recommendation = current.recommendations.find((item) => item.stableId === "CKO_RESUME");
+    expect(careerModule).toBeDefined();
+    expect(recommendation).toBeDefined();
+    Object.assign(careerModule!, { forBachelor: true, forMaster: false });
+    Object.assign(recommendation!, { forBachelor: false, forMaster: true });
+    expect(() => applyDraftMutationToSnapshot(current, {
+      entityType: "MODULE_RECOMMENDATION_CREATE",
+      stableId: linkStableId,
+      expectedUpdatedAt,
+      values: { priority: 1 },
+    })).toThrow("MODULE_RECOMMENDATION_AUDIENCE_INCOMPATIBLE");
+  });
+
+  it("allows ADMIN and sends synchronized snapshot plus create audit", async () => {
+    const mutateLink = mockDraft();
+    await mutateCurrentDraft({
+      actorUserId,
+      role: "ADMIN",
+      mutation: {
+        entityType: "MODULE_RECOMMENDATION_CREATE",
+        stableId: linkStableId,
+        expectedUpdatedAt,
+        values: { priority: 7 },
+      },
+    });
+    expect(mutateLink).toHaveBeenCalledWith(expect.objectContaining({
+      mutation: {
+        entityType: "MODULE_RECOMMENDATION_CREATE",
+        stableId: linkStableId,
+        values: { priority: 7 },
+      },
+      audit: {
+        operation: "CREATE",
+        changedFields: ["priority"],
+        previous: null,
+        next: { priority: 7 },
+      },
+    }));
+  });
+
+  it("records update and delete audit metadata", async () => {
+    const current = currentConfig();
+    const existing = current.moduleRecommendations[0];
+    const stableId = `${existing.moduleStableId}:${existing.recommendationStableId}`;
+    const mutateLink = mockDraft(current);
+
+    await mutateCurrentDraft({
+      actorUserId,
+      role: "ADMIN",
+      mutation: {
+        entityType: "MODULE_RECOMMENDATION_UPDATE",
+        stableId,
+        expectedUpdatedAt,
+        values: { priority: existing.priority + 1 },
+      },
+    });
+    expect(mutateLink).toHaveBeenLastCalledWith(expect.objectContaining({
+      mutation: expect.objectContaining({ entityType: "MODULE_RECOMMENDATION_UPDATE" }),
+      audit: {
+        operation: "UPDATE",
+        changedFields: ["priority"],
+        previous: { priority: existing.priority },
+        next: { priority: existing.priority + 1 },
+      },
+    }));
+
+    await mutateCurrentDraft({
+      actorUserId,
+      role: "ADMIN",
+      mutation: {
+        entityType: "MODULE_RECOMMENDATION_DELETE",
+        stableId,
+        expectedUpdatedAt,
+        values: {},
+      },
+    });
+    expect(mutateLink).toHaveBeenLastCalledWith(expect.objectContaining({
+      mutation: expect.objectContaining({ entityType: "MODULE_RECOMMENDATION_DELETE" }),
+      audit: {
+        operation: "DELETE",
+        changedFields: [],
+        previous: { priority: existing.priority },
+        next: null,
+      },
+    }));
+  });
+
+  it("denies EDITOR before any Data API mutation", async () => {
+    const mutateLink = vi.spyOn(adminDataApi, "mutateDraft");
+    await expect(mutateCurrentDraft({
+      actorUserId,
+      role: "EDITOR",
+      mutation: {
+        entityType: "MODULE_RECOMMENDATION_DELETE",
+        stableId: "M01:CKO_CONSULT",
+        expectedUpdatedAt,
+        values: {},
+      },
+    })).rejects.toThrow("ADMIN_FORBIDDEN");
+    expect(mutateLink).not.toHaveBeenCalled();
   });
 });

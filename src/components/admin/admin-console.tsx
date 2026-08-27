@@ -3,8 +3,64 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import { patchRelationUpdate } from "./relation-update";
+
 type Json = Record<string, unknown>;
 type Draft = { id: string; updatedAt: string; snapshot: Json; validation: { valid: boolean; issues: Json[] } };
+
+function RelationNumberControl({
+  label,
+  value,
+  min,
+  max,
+  pending,
+  onSave,
+  onDelete,
+}: {
+  label: "Weight" | "Priority";
+  value: number;
+  min: number;
+  max?: number;
+  pending: boolean;
+  onSave: (value: number) => void;
+  onDelete: () => void;
+}) {
+  const [draftValue, setDraftValue] = useState(String(value));
+
+  useEffect(() => setDraftValue(String(value)), [value]);
+
+  const numericValue = Number(draftValue);
+  const valid = draftValue.trim() !== "" && Number.isInteger(numericValue) &&
+    numericValue >= min && (max === undefined || numericValue <= max);
+
+  return (
+    <div className="admin-mapping-link__controls">
+      <label>
+        {label}
+        <input
+          type="number"
+          min={min}
+          max={max}
+          step="1"
+          value={draftValue}
+          onChange={(event) => setDraftValue(event.currentTarget.value)}
+          required
+        />
+      </label>
+      <button
+        className="button-secondary"
+        type="button"
+        disabled={pending || !valid}
+        onClick={() => onSave(numericValue)}
+      >
+        Сохранить {label.toLowerCase()}
+      </button>
+      <button className="button-secondary" type="button" disabled={pending} onClick={onDelete}>
+        Удалить связь
+      </button>
+    </div>
+  );
+}
 
 const sectionConfig: Record<string, { key: string; title: string; entityType: string }> = {
   questionnaire: { key: "questions", title: "Анкета", entityType: "QUESTION" },
@@ -74,11 +130,11 @@ function mappingErrorMessage(code: string | undefined) {
   return messages[code ?? ""] ?? "Не удалось изменить связь. Обновите страницу и попробуйте снова.";
 }
 
-function audiencesIntersect(question: Json | undefined, careerModule: Json) {
-  if (!question) return false;
+function audiencesIntersect(first: Json | undefined, second: Json) {
+  if (!first) return false;
   return Boolean(
-    (question.forBachelor && careerModule.forBachelor) ||
-    (question.forMaster && careerModule.forMaster),
+    (first.forBachelor && second.forBachelor) ||
+    (first.forMaster && second.forMaster),
   );
 }
 
@@ -131,19 +187,29 @@ function AnswerMappings({
     setPendingKey(key);
     setMessage("");
     try {
-      const response = await fetch("/api/admin/draft", {
-        method: "PATCH",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          entityType: `MAPPING_${operation}`,
+      const update = operation === "UPDATE"
+        ? await patchRelationUpdate({
+          entityType: "MAPPING_UPDATE",
           stableId: `${answerStableId}:${moduleStableId}`,
           expectedUpdatedAt: draft.updatedAt,
-          values: operation === "DELETE" ? {} : { weight },
-        }),
-      });
-      const result = await response.json() as { error?: string };
-      if (!response.ok) {
-        setMessage(mappingErrorMessage(result.error));
+          valueName: "weight",
+          value: Number(weight),
+        })
+        : await (async () => {
+          const response = await fetch("/api/admin/draft", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              entityType: `MAPPING_${operation}`,
+              stableId: `${answerStableId}:${moduleStableId}`,
+              expectedUpdatedAt: draft.updatedAt,
+              values: operation === "DELETE" ? {} : { weight },
+            }),
+          });
+          return { ok: response.ok, result: await response.json() as { error?: string } };
+        })();
+      if (!update.ok) {
+        setMessage(mappingErrorMessage(update.result.error));
         return false;
       }
       setMessage(
@@ -188,28 +254,15 @@ function AnswerMappings({
                   {careerModule?.active === false ? <span>Модуль отключён</span> : null}
                 </div>
                 {role === "ADMIN" ? (
-                  <form
-                    className="admin-mapping-link__controls"
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      const weight = Number(new FormData(event.currentTarget).get("weight"));
-                      void mutateMapping("UPDATE", moduleStableId, weight);
-                    }}
-                  >
-                    <label>
-                      Weight
-                      <input name="weight" type="number" min="-10" max="10" step="1" defaultValue={Number(mapping.weight)} required />
-                    </label>
-                    <button className="button-secondary" disabled={pendingKey !== null}>Изменить</button>
-                    <button
-                      className="button-secondary"
-                      type="button"
-                      disabled={pendingKey !== null}
-                      onClick={() => void mutateMapping("DELETE", moduleStableId, null)}
-                    >
-                      Удалить связь
-                    </button>
-                  </form>
+                  <RelationNumberControl
+                    label="Weight"
+                    value={Number(mapping.weight)}
+                    min={-10}
+                    max={10}
+                    pending={pendingKey !== null}
+                    onSave={(weight) => void mutateMapping("UPDATE", moduleStableId, weight)}
+                    onDelete={() => void mutateMapping("DELETE", moduleStableId, null)}
+                  />
                 ) : (
                   <p className="admin-mapping-link__weight">Weight: <strong>{String(mapping.weight)}</strong></p>
                 )}
@@ -258,6 +311,231 @@ function AnswerMappings({
         <p className="admin-hint">Mappings доступны EDITOR только для просмотра.</p>
       )}
       {message ? <p className="admin-mapping-message" role="status" aria-live="polite">{message}</p> : null}
+    </section>
+  );
+}
+
+function moduleRecommendationErrorMessage(code: string | undefined) {
+  const messages: Record<string, string> = {
+    MODULE_RECOMMENDATION_ALREADY_EXISTS: "Эта рекомендация уже связана с модулем.",
+    MODULE_RECOMMENDATION_NOT_FOUND: "Связь уже удалена или не существует. Обновите страницу.",
+    MODULE_RECOMMENDATION_AUDIENCE_INCOMPATIBLE: "Аудитории модуля и рекомендации не пересекаются.",
+    MODULE_NOT_FOUND: "Модуль больше не существует. Обновите страницу.",
+    RECOMMENDATION_NOT_FOUND: "Рекомендация больше не существует. Обновите страницу.",
+    INVALID_DRAFT_MUTATION: "Priority должен быть положительным целым числом.",
+    DRAFT_MUTATION_INVALID_CONFIG: "Изменение нарушает целостность DRAFT-конфигурации.",
+    DRAFT_STALE_REVISION: "DRAFT изменён другим пользователем. Обновите страницу.",
+    ADMIN_FORBIDDEN: "Изменять связи рекомендаций может только ADMIN.",
+    ADMIN_UNAUTHENTICATED: "Сессия завершена. Войдите в админку снова.",
+    ADMIN_OPERATION_FAILED: "Изменение не прошло серверную проверку DRAFT-конфигурации.",
+  };
+  return messages[code ?? ""] ?? "Не удалось изменить связь. Обновите страницу и попробуйте снова.";
+}
+
+function ModuleRecommendations({
+  careerModule,
+  draft,
+  role,
+  onReload,
+}: {
+  careerModule: Json;
+  draft: Draft;
+  role: "ADMIN" | "EDITOR";
+  onReload: () => Promise<void>;
+}) {
+  const [message, setMessage] = useState("");
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const recommendations = draft.snapshot.recommendations as Json[];
+  const links = draft.snapshot.moduleRecommendations as Json[];
+  const moduleStableId = String(careerModule.stableId);
+  const linked = links.filter((link) => link.moduleStableId === moduleStableId);
+  const linkedRecommendationIds = new Set(
+    linked.map((link) => link.recommendationStableId),
+  );
+  const availableRecommendations = recommendations.filter(
+    (recommendation) =>
+      !linkedRecommendationIds.has(recommendation.stableId) &&
+      audiencesIntersect(careerModule, recommendation),
+  );
+
+  async function mutateLink(
+    operation: "CREATE" | "UPDATE" | "DELETE",
+    recommendationStableId: string,
+    priority: number | null,
+  ) {
+    const recommendation = recommendations.find(
+      (candidate) => candidate.stableId === recommendationStableId,
+    );
+    const recommendationLabel = `${String(recommendation?.title ?? "Рекомендация")} · ${recommendationStableId}`;
+    const confirmation = operation === "DELETE"
+      ? `Удалить только связь модуля ${moduleStableId} с «${recommendationLabel}»? Модуль и рекомендация останутся без изменений.`
+      : operation === "CREATE"
+        ? `Добавить рекомендацию «${recommendationLabel}» с priority ${priority}?`
+        : `Изменить priority рекомендации «${recommendationLabel}» на ${priority}?`;
+    if (!window.confirm(confirmation)) return false;
+
+    setPendingKey(`${operation}:${recommendationStableId}`);
+    setMessage("");
+    try {
+      const update = operation === "UPDATE"
+        ? await patchRelationUpdate({
+          entityType: "MODULE_RECOMMENDATION_UPDATE",
+          stableId: `${moduleStableId}:${recommendationStableId}`,
+          expectedUpdatedAt: draft.updatedAt,
+          valueName: "priority",
+          value: Number(priority),
+        })
+        : await (async () => {
+          const response = await fetch("/api/admin/draft", {
+            method: "PATCH",
+            headers: { "content-type": "application/json" },
+            body: JSON.stringify({
+              entityType: `MODULE_RECOMMENDATION_${operation}`,
+              stableId: `${moduleStableId}:${recommendationStableId}`,
+              expectedUpdatedAt: draft.updatedAt,
+              values: operation === "DELETE" ? {} : { priority },
+            }),
+          });
+          return { ok: response.ok, result: await response.json() as { error?: string } };
+        })();
+      if (!update.ok) {
+        setMessage(moduleRecommendationErrorMessage(update.result.error));
+        return false;
+      }
+      setMessage(
+        operation === "CREATE"
+          ? "Рекомендация добавлена в DRAFT."
+          : operation === "UPDATE"
+            ? "Priority обновлён в DRAFT."
+            : "Связь удалена из DRAFT.",
+      );
+      await onReload();
+      return true;
+    } catch {
+      setMessage("Не удалось связаться с сервером. Проверьте соединение и попробуйте снова.");
+      return false;
+    } finally {
+      setPendingKey(null);
+    }
+  }
+
+  return (
+    <section className="admin-mapping-manager" aria-labelledby={`recommendations-title-${moduleStableId}`}>
+      <div className="admin-mapping-manager__heading">
+        <div>
+          <h3 id={`recommendations-title-${moduleStableId}`}>Рекомендации модуля</h3>
+          <p>Связи определяют рекомендации, доступные для этого модуля.</p>
+        </div>
+        <strong>{linked.length}</strong>
+      </div>
+      {linked.length === 0 ? (
+        <p className="admin-mapping-empty">У модуля пока нет рекомендаций.</p>
+      ) : (
+        <div className="admin-mapping-links">
+          {linked.map((link) => {
+            const recommendationStableId = String(link.recommendationStableId);
+            const recommendation = recommendations.find(
+              (candidate) => candidate.stableId === recommendationStableId,
+            );
+            return (
+              <article className="admin-mapping-link" key={recommendationStableId}>
+                <div className="admin-mapping-link__identity">
+                  <strong>{String(recommendation?.title ?? "Рекомендация не найдена")}</strong>
+                  <span>{recommendationStableId}</span>
+                  <span>Status: {String(recommendation?.status ?? "—")} · Active: {recommendation?.active === true ? "да" : "нет"}</span>
+                </div>
+                {role === "ADMIN" ? (
+                  <RelationNumberControl
+                    label="Priority"
+                    value={Number(link.priority)}
+                    min={1}
+                    pending={pendingKey !== null}
+                    onSave={(priority) => void mutateLink("UPDATE", recommendationStableId, priority)}
+                    onDelete={() => void mutateLink("DELETE", recommendationStableId, null)}
+                  />
+                ) : (
+                  <p className="admin-mapping-link__weight">Priority: <strong>{String(link.priority)}</strong></p>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+      {role === "ADMIN" ? (
+        availableRecommendations.length ? (
+          <form
+            className="admin-mapping-create"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const data = new FormData(form);
+              const created = await mutateLink(
+                "CREATE",
+                String(data.get("recommendationStableId")),
+                Number(data.get("priority")),
+              );
+              if (created) form.reset();
+            }}
+          >
+            <h4>Добавить рекомендацию</h4>
+            <label>
+              Recommendation
+              <select name="recommendationStableId" required>
+                {availableRecommendations.map((recommendation) => (
+                  <option key={String(recommendation.stableId)} value={String(recommendation.stableId)}>
+                    {String(recommendation.title)} · {String(recommendation.stableId)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Priority
+              <input name="priority" type="number" min="1" step="1" defaultValue="1" required />
+            </label>
+            <button className="button-primary" disabled={pendingKey !== null}>Добавить</button>
+          </form>
+        ) : (
+          <p className="admin-hint">Нет доступных совместимых рекомендаций для новой связи.</p>
+        )
+      ) : (
+        <p className="admin-hint">Связи рекомендаций доступны EDITOR только для просмотра.</p>
+      )}
+      {message ? <p className="admin-mapping-message" role="status" aria-live="polite">{message}</p> : null}
+    </section>
+  );
+}
+
+function RecommendationUsage({ recommendation, draft }: { recommendation: Json; draft: Draft }) {
+  const modules = draft.snapshot.modules as Json[];
+  const links = draft.snapshot.moduleRecommendations as Json[];
+  const recommendationStableId = String(recommendation.stableId);
+  const usedBy = links
+    .filter((link) => link.recommendationStableId === recommendationStableId)
+    .map((link) => ({
+      link,
+      careerModule: modules.find((candidate) => candidate.stableId === link.moduleStableId),
+    }));
+
+  return (
+    <section className="admin-mapping-manager" aria-labelledby={`usage-title-${recommendationStableId}`}>
+      <div className="admin-mapping-manager__heading">
+        <div>
+          <h3 id={`usage-title-${recommendationStableId}`}>Используется в {usedBy.length} модулях</h3>
+          <p>Список формируется из текущего DRAFT и доступен только для просмотра.</p>
+        </div>
+      </div>
+      {usedBy.length ? (
+        <div className="admin-mapping-links">
+          {usedBy.map(({ link, careerModule }) => (
+            <article className="admin-mapping-link" key={String(link.moduleStableId)}>
+              <div className="admin-mapping-link__identity">
+                <strong>{String(careerModule?.name ?? "Модуль не найден")}</strong>
+                <span>{String(link.moduleStableId)} · Priority: {String(link.priority)}</span>
+              </div>
+            </article>
+          ))}
+        </div>
+      ) : <p className="admin-mapping-empty">Рекомендация пока не связана с модулями.</p>}
     </section>
   );
 }
@@ -457,6 +735,7 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
   const modules = draft.snapshot.modules as Json[];
   const answerById = new Map(answers.map((answer) => [String(answer.stableId), answer]));
   const moduleById = new Map(modules.map((careerModule) => [String(careerModule.stableId), careerModule]));
+  const hasRelationPanel = ["ANSWER", "MODULE", "RECOMMENDATION"].includes(config.entityType);
 
   return <>
     <header className="admin-heading">
@@ -489,12 +768,18 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
             <button className="button-primary">Создать в DRAFT</button>{message && <p>{message}</p>}
           </form>
         ) : !item ? <p>Записей пока нет.</p> : <>
-          {config.entityType === "ANSWER" ? <>
-            <h2>{String(item.stableId)}</h2>
+          {hasRelationPanel ? <h2>{String(item.stableId)}</h2> : null}
+          {config.entityType === "ANSWER" ? (
             <AnswerMappings key={String(item.stableId)} answer={item} draft={draft} role={role} onReload={load} />
-          </> : null}
+          ) : null}
+          {config.entityType === "MODULE" ? (
+            <ModuleRecommendations key={String(item.stableId)} careerModule={item} draft={draft} role={role} onReload={load} />
+          ) : null}
+          {config.entityType === "RECOMMENDATION" ? (
+            <RecommendationUsage key={String(item.stableId)} recommendation={item} draft={draft} />
+          ) : null}
           <form key={editorKey} onSubmit={save} className="admin-form">
-            {config.entityType !== "ANSWER" ? <h2>{String(item.stableId ?? item.answerStableId)}</h2> : null}
+            {!hasRelationPanel ? <h2>{String(item.stableId ?? item.answerStableId)}</h2> : null}
             {config.entityType === "WEIGHT" ? <div className="admin-mapping-summary">
               <p><strong>{String(item.answerStableId)} · {String(answerById.get(String(item.answerStableId))?.text ?? "Ответ не найден")}</strong></p>
               <p>→ {String(item.moduleStableId)} · {String(moduleById.get(String(item.moduleStableId))?.name ?? "Модуль не найден")}</p>

@@ -68,7 +68,6 @@ describe("admin domain RPC mappings", () => {
       expectedUpdatedAt: timestamp,
       expectedSnapshotHash: hash,
       mutation: { entityType: "QUESTION", stableId: "Q1", values: { text: "x" } },
-      nextSnapshot: { questions: [] },
       audit: { changedFields: ["text"] },
     });
 
@@ -78,37 +77,11 @@ describe("admin domain RPC mappings", () => {
         p_actor_user_id: actorId,
         p_expected_updated_at: timestamp,
         p_expected_snapshot_hash: hash,
+        p_mutation: { entityType: "QUESTION", stableId: "Q1", values: { text: "x" } },
+        p_audit: { changedFields: ["text"] },
       }),
     );
-  });
-
-  it("maps mapping CRUD to its atomic RPC with snapshot and audit", async () => {
-    const { client, rpc } = rpcClient({ id: configId, updatedAt: timestamp });
-    const api = createAdminDataApi(client);
-
-    await api.mutateMapping({
-      actorUserId: actorId,
-      expectedUpdatedAt: timestamp,
-      expectedSnapshotHash: hash,
-      operation: "DELETE",
-      answerStableId: "Q1_A1",
-      moduleStableId: "M01",
-      weight: null,
-      nextSnapshot: { mappings: [] },
-      audit: { operation: "DELETE", previous: { weight: 3 }, next: null },
-    });
-
-    expect(rpc).toHaveBeenCalledWith("admin_mutate_mapping", {
-      p_actor_user_id: actorId,
-      p_expected_updated_at: timestamp,
-      p_expected_snapshot_hash: hash,
-      p_operation: "DELETE",
-      p_answer_stable_id: "Q1_A1",
-      p_module_stable_id: "M01",
-      p_weight: null,
-      p_next_snapshot: { mappings: [] },
-      p_audit: { operation: "DELETE", previous: { weight: 3 }, next: null },
-    });
+    expect(JSON.stringify(rpc.mock.calls)).not.toContain("p_next_snapshot");
   });
 
   it("maps publish to one atomic RPC with expected revision and hash", async () => {

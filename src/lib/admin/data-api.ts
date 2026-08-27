@@ -238,7 +238,6 @@ export function createAdminDataApi(client?: AdminRpcClient) {
       expectedUpdatedAt: string;
       expectedSnapshotHash: string;
       mutation: Record<string, unknown>;
-      nextSnapshot: unknown;
       audit: Record<string, unknown>;
     }) {
       return rpc(
@@ -248,34 +247,6 @@ export function createAdminDataApi(client?: AdminRpcClient) {
           p_expected_updated_at: input.expectedUpdatedAt,
           p_expected_snapshot_hash: input.expectedSnapshotHash,
           p_mutation: input.mutation,
-          p_next_snapshot: input.nextSnapshot,
-          p_audit: input.audit,
-        },
-        draftMutationResultSchema,
-      );
-    },
-    mutateMapping(input: {
-      actorUserId: string;
-      expectedUpdatedAt: string;
-      expectedSnapshotHash: string;
-      operation: "CREATE" | "UPDATE" | "DELETE";
-      answerStableId: string;
-      moduleStableId: string;
-      weight: number | null;
-      nextSnapshot: unknown;
-      audit: Record<string, unknown>;
-    }) {
-      return rpc(
-        "admin_mutate_mapping",
-        {
-          p_actor_user_id: input.actorUserId,
-          p_expected_updated_at: input.expectedUpdatedAt,
-          p_expected_snapshot_hash: input.expectedSnapshotHash,
-          p_operation: input.operation,
-          p_answer_stable_id: input.answerStableId,
-          p_module_stable_id: input.moduleStableId,
-          p_weight: input.weight,
-          p_next_snapshot: input.nextSnapshot,
           p_audit: input.audit,
         },
         draftMutationResultSchema,
