@@ -36,6 +36,13 @@
       "when": 1787588242530,
       "tag": "0004_admin-data-api",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1787822638754,
+      "tag": "0005_trajectory-sessions-audience",
+      "breakpoints": true
     }
   ]
 }

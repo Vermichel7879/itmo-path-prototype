@@ -30,6 +30,8 @@ export const draftMutationSchema = z.discriminatedUnion("entityType", [
       required: z.boolean(),
       sortOrder: z.number().int().positive(),
       showCondition: z.object({ expression: z.literal("entrepreneur_signal = true") }).nullable(),
+      forBachelor: z.boolean().default(false),
+      forMaster: z.boolean().default(true),
       firstAnswer: z.object({ stableId: z.string().regex(/^Q\d+_A\d+$/), text: z.string().trim().min(1) }),
     }).strict(),
   }),
@@ -59,6 +61,8 @@ export const draftMutationSchema = z.discriminatedUnion("entityType", [
       tags: z.array(z.string().trim().min(1)).default([]),
       priorityTags: z.array(z.string().trim().min(1)).default([]),
       active: z.boolean().default(true),
+      forBachelor: z.boolean().default(false),
+      forMaster: z.boolean().default(true),
     }).strict(),
   }),
   z.object({
@@ -74,6 +78,8 @@ export const draftMutationSchema = z.discriminatedUnion("entityType", [
       sortOrder: z.number().int().positive().optional(),
       active: z.boolean().optional(),
       showCondition: z.object({ expression: z.string().trim().min(1) }).nullable().optional(),
+      forBachelor: z.boolean().optional(),
+      forMaster: z.boolean().optional(),
     }).strict(),
   }),
   z.object({
@@ -102,6 +108,8 @@ export const draftMutationSchema = z.discriminatedUnion("entityType", [
       constraints: z.string().trim().optional(),
       sortOrder: z.number().int().positive().optional(),
       active: z.boolean().optional(),
+      forBachelor: z.boolean().optional(),
+      forMaster: z.boolean().optional(),
     }).strict(),
   }),
   z.object({
@@ -116,6 +124,8 @@ export const draftMutationSchema = z.discriminatedUnion("entityType", [
       tags: z.array(z.string().trim().min(1)).optional(),
       priorityTags: z.array(z.string().trim().min(1)).optional(),
       active: z.boolean().optional(),
+      forBachelor: z.boolean().optional(),
+      forMaster: z.boolean().optional(),
     }).strict(),
   }),
   z.object({
@@ -217,6 +227,8 @@ export function applyDraftMutationToSnapshot(
         sortOrder: mutation.values.sortOrder,
         showCondition: mutation.values.showCondition,
         active: true,
+        forBachelor: mutation.values.forBachelor,
+        forMaster: mutation.values.forMaster,
       });
       snapshot.answers.push({
         stableId: mutation.values.firstAnswer.stableId,

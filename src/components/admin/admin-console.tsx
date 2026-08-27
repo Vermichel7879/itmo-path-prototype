@@ -28,10 +28,10 @@ function AdminDashboard() {
 }
 
 function valueFields(entityType: string) {
-  if (entityType === "QUESTION") return ["text", "block", "minSelect", "maxSelect", "sortOrder", "required", "active"];
+  if (entityType === "QUESTION") return ["text", "block", "minSelect", "maxSelect", "sortOrder", "required", "active", "forBachelor", "forMaster"];
   if (entityType === "ANSWER") return ["text", "tags", "keys", "sortOrder", "active"];
-  if (entityType === "MODULE") return ["name", "goal", "step1", "step2", "step3", "checkpoint", "constraints", "sortOrder", "active"];
-  if (entityType === "RECOMMENDATION") return ["title", "description", "url", "status", "active"];
+  if (entityType === "MODULE") return ["name", "goal", "step1", "step2", "step3", "checkpoint", "constraints", "sortOrder", "active", "forBachelor", "forMaster"];
+  if (entityType === "RECOMMENDATION") return ["title", "description", "url", "status", "active", "forBachelor", "forMaster"];
   if (entityType === "OPPORTUNITY") return ["type", "title", "description", "url", "startsAt", "endsAt", "validFrom", "validTo", "active"];
   if (entityType === "RULE") return ["sourceTitle", "sourceContent", "active"];
   if (entityType === "MODIFIER") return ["active"];
@@ -45,6 +45,13 @@ function normalizeItem(entityType: string, raw: Json) {
     return { ...raw, step1: steps?.[0], step2: steps?.[1], step3: steps?.[2] };
   }
   return raw;
+}
+
+function audienceLabel(item: Json) {
+  if (item.forBachelor && item.forMaster) return "Бакалавриат + Магистратура";
+  if (item.forBachelor) return "Бакалавриат";
+  if (item.forMaster) return "Магистратура";
+  return "Аудитория не выбрана";
 }
 
 type TypedLeaf = { path: string[]; value: string | number | boolean | null };
@@ -104,6 +111,7 @@ function CreateEntityForm({ entityType, draft, onCreated }: { entityType: string
         minSelect: Number(form.get("minSelect")), maxSelect: Number(form.get("maxSelect")),
         required: form.get("required") === "on", sortOrder: Number(form.get("sortOrder")),
         showCondition: form.get("showCondition") === "ENTREPRENEUR_SIGNAL" ? { expression: "entrepreneur_signal = true" } : null,
+        forBachelor: form.get("forBachelor") === "on", forMaster: form.get("forMaster") === "on",
         firstAnswer: { stableId: form.get("firstAnswerStableId"), text: form.get("firstAnswerText") },
       },
     } : entityType === "ANSWER" ? {
@@ -118,7 +126,7 @@ function CreateEntityForm({ entityType, draft, onCreated }: { entityType: string
         type: form.get("type"), title: form.get("title"), description: form.get("description"),
         url: form.get("url") || null, status: form.get("status"), tags: lists.tags,
         priorityTags: String(form.get("priorityTags") ?? "").split(",").map((value) => value.trim()).filter(Boolean),
-        active: true,
+        active: true, forBachelor: form.get("forBachelor") === "on", forMaster: form.get("forMaster") === "on",
       },
     };
     const response = await fetch("/api/admin/draft", {
@@ -156,6 +164,7 @@ function CreateEntityForm({ entityType, draft, onCreated }: { entityType: string
       <label>URL<input name="url" type="url" /></label><label>Статус<select name="status"><option>ACTIVE</option><option>SLOT</option><option>INACTIVE</option></select></label>
       <label>Tags <small>через запятую</small><input name="tags" /></label><label>Priority tags <small>через запятую</small><input name="priorityTags" /></label>
     </>}
+    {["QUESTION", "RECOMMENDATION"].includes(entityType) && <fieldset><legend>Для кого</legend><label className="admin-checkbox"><input name="forBachelor" type="checkbox" /> Бакалавриат</label><label className="admin-checkbox"><input name="forMaster" type="checkbox" defaultChecked /> Магистратура</label></fieldset>}
     <button className="button-primary">Создать</button>{message && <p role="status">{message}</p>}
   </form></details>;
 }
@@ -231,17 +240,18 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
   }
 
   if (!draft) return <p>Загрузка…</p>;
-  return <><header className="admin-heading"><div><p className="eyebrow">DRAFT only</p><h1>{config.title}</h1></div><span className={draft.validation.valid ? "admin-status" : "admin-status admin-status--error"}>{draft.validation.valid ? "Готово" : "Есть ошибки"}</span></header><CreateEntityForm entityType={config.entityType} draft={draft} onCreated={load} /><div className="admin-editor"><div className="admin-list">{items.map((candidate, index) => <button key={`${String(candidate.stableId ?? index)}`} onClick={() => setSelectedIndex(index)} className={index === selectedIndex ? "active" : ""}><strong>{String(candidate.stableId ?? candidate.answerStableId)}</strong><span>{String(candidate.title ?? candidate.name ?? candidate.text ?? candidate.moduleStableId ?? "")}</span></button>)}</div><section className="admin-card">{!item && config.entityType === "OPPORTUNITY" ? <form className="admin-form" onSubmit={createOpportunity}><h2>Новая возможность</h2><label>Stable ID<input name="stableId" pattern="[A-Z][A-Z0-9_]*" required /></label><label>Тип<select name="type"><option>EVENT</option><option>CLUB</option><option>FACULTY</option><option>PRACTICE</option><option>INTERNSHIP</option><option>OTHER</option></select></label><label>Название<input name="title" required /></label><label>Описание<textarea name="description" required /></label><label>URL<input name="url" type="url" /></label><button className="button-primary">Создать в DRAFT</button>{message && <p>{message}</p>}</form> : !item ? <p>Записей пока нет.</p> : <form onSubmit={save} className="admin-form"><h2>{String(item.stableId ?? item.answerStableId)}</h2>{valueFields(config.entityType).map((field) => typeof item[field] === "boolean" ? <label key={field} className="admin-checkbox"><input name={field} type="checkbox" defaultChecked={Boolean(item[field])} /> {field}</label> : <label key={field}>{field}{Array.isArray(item[field]) && <small>через запятую</small>}<textarea name={field} defaultValue={Array.isArray(item[field]) ? (item[field] as unknown[]).join(", ") : String(item[field] ?? "")} rows={["description", "goal", "sourceContent"].includes(field) ? 5 : 2} /></label>)}{config.entityType === "QUESTION" && <label>Условие показа<select name="showCondition" defaultValue={item.showCondition ? "ENTREPRENEUR_SIGNAL" : "ALWAYS"}><option value="ALWAYS">Показывать всегда</option><option value="ENTREPRENEUR_SIGNAL">Только при entrepreneur_signal</option></select></label>}{config.entityType === "RULE" && <TypedFields prefix="params" value={item.params} />}{config.entityType === "MODIFIER" && <><TypedFields prefix="effect" value={item.effect} /><TypedFields prefix="params" value={(item.operation as Json).params} /></>}{["RULE", "MODIFIER"].includes(config.entityType) && <details><summary>Typed JSON preview (read-only)</summary><pre>{JSON.stringify(item.params ?? item.operation, null, 2)}</pre></details>}{["RULE", "MODIFIER", "WEIGHT"].includes(config.entityType) && <p className="admin-hint">Критическая логика. Изменения доступны только ADMIN и проходят полную typed validation.</p>}<button className="button-primary" disabled={logicLocked}>Сохранить</button>{logicLocked && <p className="admin-hint">Критическая логика доступна только ADMIN.</p>}{message && <p role="status">{message}</p>}</form>}</section></div></>;
+  const hasAudience = ["QUESTION", "MODULE", "RECOMMENDATION"].includes(config.entityType);
+  return <><header className="admin-heading"><div><p className="eyebrow">DRAFT only</p><h1>{config.title}</h1></div><span className={draft.validation.valid ? "admin-status" : "admin-status admin-status--error"}>{draft.validation.valid ? "Готово" : "Есть ошибки"}</span></header><CreateEntityForm entityType={config.entityType} draft={draft} onCreated={load} /><div className="admin-editor"><div className="admin-list">{items.map((candidate, index) => <button key={`${String(candidate.stableId ?? index)}`} onClick={() => setSelectedIndex(index)} className={index === selectedIndex ? "active" : ""}><strong>{String(candidate.stableId ?? candidate.answerStableId)}</strong><span>{String(candidate.title ?? candidate.name ?? candidate.text ?? candidate.moduleStableId ?? "")}</span>{hasAudience ? <small>{audienceLabel(candidate)}</small> : null}</button>)}</div><section className="admin-card">{!item && config.entityType === "OPPORTUNITY" ? <form className="admin-form" onSubmit={createOpportunity}><h2>Новая возможность</h2><label>Stable ID<input name="stableId" pattern="[A-Z][A-Z0-9_]*" required /></label><label>Тип<select name="type"><option>EVENT</option><option>CLUB</option><option>FACULTY</option><option>PRACTICE</option><option>INTERNSHIP</option><option>OTHER</option></select></label><label>Название<input name="title" required /></label><label>Описание<textarea name="description" required /></label><label>URL<input name="url" type="url" /></label><button className="button-primary">Создать в DRAFT</button>{message && <p>{message}</p>}</form> : !item ? <p>Записей пока нет.</p> : <form onSubmit={save} className="admin-form"><h2>{String(item.stableId ?? item.answerStableId)}</h2>{hasAudience ? <fieldset><legend>Для кого</legend><label className="admin-checkbox"><input name="forBachelor" type="checkbox" defaultChecked={Boolean(item.forBachelor)} /> Бакалавриат</label><label className="admin-checkbox"><input name="forMaster" type="checkbox" defaultChecked={Boolean(item.forMaster)} /> Магистратура</label></fieldset> : null}{valueFields(config.entityType).filter((field) => !["forBachelor", "forMaster"].includes(field)).map((field) => typeof item[field] === "boolean" ? <label key={field} className="admin-checkbox"><input name={field} type="checkbox" defaultChecked={Boolean(item[field])} /> {field}</label> : <label key={field}>{field}{Array.isArray(item[field]) && <small>через запятую</small>}<textarea name={field} defaultValue={Array.isArray(item[field]) ? (item[field] as unknown[]).join(", ") : String(item[field] ?? "")} rows={["description", "goal", "sourceContent"].includes(field) ? 5 : 2} /></label>)}{config.entityType === "QUESTION" && <label>Условие показа<select name="showCondition" defaultValue={item.showCondition ? "ENTREPRENEUR_SIGNAL" : "ALWAYS"}><option value="ALWAYS">Показывать всегда</option><option value="ENTREPRENEUR_SIGNAL">Только при entrepreneur_signal</option></select></label>}{config.entityType === "RULE" && <TypedFields prefix="params" value={item.params} />}{config.entityType === "MODIFIER" && <><TypedFields prefix="effect" value={item.effect} /><TypedFields prefix="params" value={(item.operation as Json).params} /></>}{["RULE", "MODIFIER"].includes(config.entityType) && <details><summary>Typed JSON preview (read-only)</summary><pre>{JSON.stringify(item.params ?? item.operation, null, 2)}</pre></details>}{["RULE", "MODIFIER", "WEIGHT"].includes(config.entityType) && <p className="admin-hint">Критическая логика. Изменения доступны только ADMIN и проходят полную typed validation.</p>}<button className="button-primary" disabled={logicLocked}>Сохранить</button>{logicLocked && <p className="admin-hint">Критическая логика доступна только ADMIN.</p>}{message && <p role="status">{message}</p>}</form>}</section></div></>;
 }
 
 function Preview() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [result, setResult] = useState<Json | null>(null);
   useEffect(() => { void fetch("/api/admin/draft").then((r) => r.json()).then(setDraft); }, []);
-  async function run(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const ids = new FormData(event.currentTarget).getAll("answers"); const response = await fetch("/api/admin/preview", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ selectedAnswerIds: ids }) }); setResult(await response.json()); }
+  async function run(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const ids = new FormData(event.currentTarget).getAll("answers"); const response = await fetch("/api/admin/preview", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ selectedAnswerIds: ids, educationLevel: "MASTER" }) }); setResult(await response.json()); }
   if (!draft) return <p>Загрузка…</p>;
   const answers = draft.snapshot.answers as Json[];
-  return <><header className="admin-heading"><div><p className="eyebrow">Тот же production engine</p><h1>Preview DRAFT</h1></div></header><form onSubmit={run} className="admin-card admin-preview-form">{(draft.snapshot.questions as Json[]).map((question) => <fieldset key={String(question.stableId)}><legend>{String(question.stableId)} · {String(question.text)}</legend>{answers.filter((a) => a.questionStableId === question.stableId).map((answer) => <label key={String(answer.stableId)}><input type={question.selectionType === "SINGLE" ? "radio" : "checkbox"} name="answers" value={String(answer.stableId)} /> {String(answer.text)}</label>)}</fieldset>)}<button className="button-primary">Рассчитать DRAFT</button></form>{result && <div className="admin-grid"><section className="admin-card"><h2>Public-style result</h2><pre>{JSON.stringify(result.result ?? result, null, 2)}</pre></section><section className="admin-card"><h2>Technical debug</h2><pre>{JSON.stringify(result.debug ?? result, null, 2)}</pre></section></div>}<section className="admin-card"><h2>E01–E07 — documentation only</h2><pre>{JSON.stringify(draft.snapshot.documentationExamples, null, 2)}</pre></section></>;
+  return <><header className="admin-heading"><div><p className="eyebrow">Тот же production engine · Магистратура</p><h1>Preview DRAFT</h1></div></header><form onSubmit={run} className="admin-card admin-preview-form">{(draft.snapshot.questions as Json[]).filter((question) => question.forMaster !== false).map((question) => <fieldset key={String(question.stableId)}><legend>{String(question.stableId)} · {String(question.text)}</legend>{answers.filter((a) => a.questionStableId === question.stableId).map((answer) => <label key={String(answer.stableId)}><input type={question.selectionType === "SINGLE" ? "radio" : "checkbox"} name="answers" value={String(answer.stableId)} /> {String(answer.text)}</label>)}</fieldset>)}<button className="button-primary">Рассчитать DRAFT</button></form>{result && <div className="admin-grid"><section className="admin-card"><h2>Public-style result</h2><pre>{JSON.stringify(result.result ?? result, null, 2)}</pre></section><section className="admin-card"><h2>Technical debug</h2><pre>{JSON.stringify(result.debug ?? result, null, 2)}</pre></section></div>}<section className="admin-card"><h2>E01–E07 — documentation only</h2><pre>{JSON.stringify(draft.snapshot.documentationExamples, null, 2)}</pre></section></>;
 }
 
 function Audit() {

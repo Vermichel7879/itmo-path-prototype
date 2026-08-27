@@ -7,7 +7,7 @@ import { requireCapability } from "@/lib/auth/permissions";
 import { calculateCareerTrajectoryDebug } from "@/lib/rule-engine/engine";
 import { validateQuestionnaireSelection } from "@/lib/rule-engine/validate-selection";
 
-const schema = z.object({ selectedAnswerIds: z.array(z.string()).max(100) });
+const schema = z.object({ selectedAnswerIds: z.array(z.string()).max(100), educationLevel: z.enum(["BACHELOR", "MASTER"]).default("MASTER") });
 
 export async function POST(request: Request) {
   try {
@@ -16,8 +16,8 @@ export async function POST(request: Request) {
     const parsed = schema.safeParse(await request.json());
     if (!parsed.success) return NextResponse.json({ error: "INVALID_PREVIEW_INPUT" }, { status: 400 });
     const draft = await getCurrentDraftConfig();
-    const selection = validateQuestionnaireSelection(draft.snapshot, parsed.data.selectedAnswerIds);
-    return NextResponse.json(calculateCareerTrajectoryDebug(draft.id, draft.snapshot, selection.effectiveAnswerIds));
+    const selection = validateQuestionnaireSelection(draft.snapshot, parsed.data.selectedAnswerIds, parsed.data.educationLevel);
+    return NextResponse.json(calculateCareerTrajectoryDebug(draft.id, draft.snapshot, selection.effectiveAnswerIds, {}, parsed.data.educationLevel));
   } catch (error) {
     return adminApiError(error);
   }

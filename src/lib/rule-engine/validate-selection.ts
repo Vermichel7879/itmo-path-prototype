@@ -2,10 +2,12 @@ import { z } from "zod";
 
 import type { CareerImport } from "../db/import/import-model";
 import { isEntrepreneurBranchActive } from "./engine";
+import { filterCareerConfigByAudience, type EducationLevel } from "../career/audience";
 
 export const trajectoryRequestSchema = z
   .object({
     configVersionId: z.uuid(),
+    sessionId: z.uuid(),
     selectedAnswerIds: z.array(z.string().trim().min(1)).max(75),
   })
   .strict();
@@ -23,7 +25,9 @@ export class QuestionnaireValidationError extends Error {
 export function validateQuestionnaireSelection(
   config: CareerImport,
   selectedAnswerIds: string[],
+  educationLevel: EducationLevel = "MASTER",
 ) {
+  config = filterCareerConfigByAudience(config, educationLevel);
   if (new Set(selectedAnswerIds).size !== selectedAnswerIds.length) {
     throw new QuestionnaireValidationError("DUPLICATE_ANSWER_ID");
   }

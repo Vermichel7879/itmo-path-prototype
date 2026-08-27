@@ -73,6 +73,8 @@ export async function replaceDraftFromImport(
         sortOrder: question.sortOrder,
         showCondition: question.showCondition,
         active: question.active,
+        forBachelor: question.forBachelor,
+        forMaster: question.forMaster,
       })),
     );
 
@@ -110,6 +112,8 @@ export async function replaceDraftFromImport(
         constraints: module.constraints,
         sortOrder: module.sortOrder,
         active: module.active,
+        forBachelor: module.forBachelor,
+        forMaster: module.forMaster,
       })),
     );
 
@@ -132,6 +136,8 @@ export async function replaceDraftFromImport(
         tags: recommendation.tags,
         priorityTags: recommendation.priorityTags,
         active: recommendation.active,
+        forBachelor: recommendation.forBachelor,
+        forMaster: recommendation.forMaster,
       })),
     );
 

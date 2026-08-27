@@ -83,6 +83,16 @@ export const opportunityTypeEnum = pgEnum("opportunity_type", [
   "INTERNSHIP",
   "OTHER",
 ]);
+export const educationLevelEnum = pgEnum("education_level", ["BACHELOR", "MASTER"]);
+export const trajectorySessionStatusEnum = pgEnum("trajectory_session_status", [
+  "IN_PROGRESS",
+  "COMPLETED",
+  "UNAVAILABLE",
+]);
+export const trajectoryModuleResultKindEnum = pgEnum(
+  "trajectory_module_result_kind",
+  ["PRIMARY", "SUPPORT"],
+);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -237,6 +247,8 @@ export const questions = pgTable(
     sortOrder: integer("sort_order").notNull(),
     showCondition: jsonb("show_condition").$type<{ expression: string } | null>(),
     active: boolean("active").default(true).notNull(),
+    forBachelor: boolean("for_bachelor").default(false).notNull(),
+    forMaster: boolean("for_master").default(true).notNull(),
     ...timestamps,
   },
   (table) => [
@@ -318,6 +330,8 @@ export const modules = pgTable(
     constraints: text("constraints").default("").notNull(),
     sortOrder: integer("sort_order"),
     active: boolean("active").default(true).notNull(),
+    forBachelor: boolean("for_bachelor").default(false).notNull(),
+    forMaster: boolean("for_master").default(true).notNull(),
     ...timestamps,
   },
   (table) => [
@@ -517,6 +531,8 @@ export const recommendations = pgTable(
       .default(sql`'[]'::jsonb`)
       .notNull(),
     active: boolean("active").default(true).notNull(),
+    forBachelor: boolean("for_bachelor").default(false).notNull(),
+    forMaster: boolean("for_master").default(true).notNull(),
     ...timestamps,
   },
   (table) => [
@@ -737,4 +753,101 @@ export const auditLog = pgTable(
     index("audit_log_config_idx").on(table.configVersionId, table.createdAt),
     index("audit_log_entity_idx").on(table.entityType, table.entityId),
   ],
+);
+
+export const trajectorySessions = pgTable(
+  "trajectory_sessions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    isu: text("isu").notNull(),
+    educationLevel: educationLevelEnum("education_level").notNull(),
+    configVersionId: uuid("config_version_id")
+      .notNull()
+      .references(() => configVersions.id, { onDelete: "restrict" }),
+    status: trajectorySessionStatusEnum("status").notNull(),
+    primaryModuleId: varchar("primary_module_id", { length: 40 }),
+    resultSnapshot: jsonb("result_snapshot").$type<Record<string, unknown> | null>(),
+    startedAt: timestamp("started_at", { withTimezone: true }).defaultNow().notNull(),
+    lastActivityAt: timestamp("last_activity_at", { withTimezone: true }).defaultNow().notNull(),
+    completedAt: timestamp("completed_at", { withTimezone: true }),
+  },
+  (table) => [
+    index("trajectory_sessions_isu_idx").on(table.isu),
+    index("trajectory_sessions_config_idx").on(table.configVersionId),
+    index("trajectory_sessions_status_idx").on(table.status),
+    check("trajectory_sessions_isu_digits", sql`${table.isu} ~ '^[0-9]+$'`),
+    check(
+      "trajectory_sessions_completion_consistent",
+      sql`(${table.status} = 'COMPLETED' AND ${table.completedAt} IS NOT NULL AND ${table.resultSnapshot} IS NOT NULL) OR (${table.status} <> 'COMPLETED' AND ${table.completedAt} IS NULL)`,
+    ),
+  ],
+);
+
+export const sessionAnswers = pgTable(
+  "session_answers",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    sessionId: uuid("session_id").notNull().references(() => trajectorySessions.id, { onDelete: "cascade" }),
+    questionId: varchar("question_id", { length: 40 }).notNull(),
+    answerOptionId: varchar("answer_option_id", { length: 60 }).notNull(),
+    selectedAt: timestamp("selected_at", { withTimezone: true }).defaultNow().notNull(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("session_answers_selection_unique").on(table.sessionId, table.questionId, table.answerOptionId),
+    index("session_answers_session_question_idx").on(table.sessionId, table.questionId),
+  ],
+);
+
+export const sessionModuleScores = pgTable(
+  "session_module_scores",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    sessionId: uuid("session_id").notNull().references(() => trajectorySessions.id, { onDelete: "cascade" }),
+    moduleId: varchar("module_id", { length: 40 }).notNull(),
+    totalScore: integer("total_score").notNull(),
+    finalRank: integer("final_rank").notNull(),
+    q2Score: integer("q2_score").default(0).notNull(),
+    q3Score: integer("q3_score").default(0).notNull(),
+    q1Score: integer("q1_score").default(0).notNull(),
+    q5Score: integer("q5_score").default(0).notNull(),
+  },
+  (table) => [uniqueIndex("session_module_scores_unique").on(table.sessionId, table.moduleId)],
+);
+
+export const sessionScoreContributions = pgTable(
+  "session_score_contributions",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    sessionId: uuid("session_id").notNull().references(() => trajectorySessions.id, { onDelete: "cascade" }),
+    questionId: varchar("question_id", { length: 40 }).notNull(),
+    answerOptionId: varchar("answer_option_id", { length: 60 }).notNull(),
+    moduleId: varchar("module_id", { length: 40 }).notNull(),
+    weight: integer("weight").notNull(),
+  },
+  (table) => [index("session_score_contributions_session_idx").on(table.sessionId)],
+);
+
+export const sessionModuleResults = pgTable(
+  "session_module_results",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    sessionId: uuid("session_id").notNull().references(() => trajectorySessions.id, { onDelete: "cascade" }),
+    moduleId: varchar("module_id", { length: 40 }).notNull(),
+    kind: trajectoryModuleResultKindEnum("kind").notNull(),
+    position: integer("position").notNull(),
+  },
+  (table) => [uniqueIndex("session_module_results_unique").on(table.sessionId, table.kind, table.position)],
+);
+
+export const sessionRecommendations = pgTable(
+  "session_recommendations",
+  {
+    id: bigserial("id", { mode: "number" }).primaryKey(),
+    sessionId: uuid("session_id").notNull().references(() => trajectorySessions.id, { onDelete: "cascade" }),
+    recommendationId: varchar("recommendation_id", { length: 100 }).notNull(),
+    position: integer("position").notNull(),
+    sourceModuleId: varchar("source_module_id", { length: 40 }),
+  },
+  (table) => [uniqueIndex("session_recommendations_unique").on(table.sessionId, table.position)],
 );

@@ -152,6 +152,8 @@ export async function buildCareerConfigSnapshot(
       sortOrder: question.sortOrder,
       showCondition: question.showCondition ?? null,
       active: question.active,
+      forBachelor: question.forBachelor,
+      forMaster: question.forMaster,
     })),
     answers: answerRows
       .sort(
@@ -217,6 +219,8 @@ export async function buildCareerConfigSnapshot(
         constraints: module.constraints,
         sortOrder: module.sortOrder,
         active: module.active,
+        forBachelor: module.forBachelor,
+        forMaster: module.forMaster,
       })),
     modifiers: modifierRows.map((modifier) => ({
       stableId: modifier.stableId,
@@ -251,6 +255,8 @@ export async function buildCareerConfigSnapshot(
         tags: recommendation.tags,
         priorityTags: recommendation.priorityTags,
         active: recommendation.active,
+        forBachelor: recommendation.forBachelor,
+        forMaster: recommendation.forMaster,
       })),
     moduleRecommendations: moduleRecommendationRows.map((link) => ({
       moduleStableId: requiredReference(

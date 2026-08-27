@@ -9,6 +9,10 @@ import {
 
 const stableId = z.string().trim().min(1);
 const nonEmptyText = z.string().trim().min(1);
+const audienceFields = {
+  forBachelor: z.boolean().default(false),
+  forMaster: z.boolean().default(true),
+};
 
 export const showConditionSchema = z
   .object({ expression: nonEmptyText })
@@ -31,6 +35,7 @@ export const questionImportSchema = z
     sortOrder: z.number().int().positive(),
     showCondition: showConditionSchema.nullable(),
     active: z.boolean(),
+    ...audienceFields,
   })
   .strict();
 
@@ -66,6 +71,7 @@ export const moduleImportSchema = z
     constraints: z.string().trim(),
     sortOrder: z.number().int().positive(),
     active: z.boolean(),
+    ...audienceFields,
   })
   .strict();
 
@@ -94,6 +100,7 @@ export const recommendationImportSchema = z
     tags: z.array(nonEmptyText),
     priorityTags: z.array(nonEmptyText),
     active: z.boolean(),
+    ...audienceFields,
   })
   .strict();
 
@@ -271,10 +278,12 @@ export const careerImportSchema = z
 
     const questions = new Map(config.questions.map((item) => [item.stableId, item]));
     const answers = new Map(config.answers.map((item) => [item.stableId, item]));
-    const modules = new Set(config.modules.map((item) => item.stableId));
-    const recommendations = new Set(
-      config.recommendations.map((item) => item.stableId),
+    const moduleById = new Map(config.modules.map((item) => [item.stableId, item]));
+    const recommendationById = new Map(
+      config.recommendations.map((item) => [item.stableId, item]),
     );
+    const modules = new Set(moduleById.keys());
+    const recommendations = new Set(recommendationById.keys());
     const modifiers = new Set(config.modifiers.map((item) => item.stableId));
     const answerTags = new Set(config.answers.flatMap((item) => item.tags));
     const answerKeys = new Set(config.answers.flatMap((item) => item.keys));
@@ -310,6 +319,9 @@ export const careerImportSchema = z
     }
 
     config.questions.forEach((question, index) => {
+      if (question.active && !question.forBachelor && !question.forMaster) {
+        context.addIssue({ code: "custom", path: ["questions", index, "forMaster"], message: "для активного вопроса выберите хотя бы одну аудиторию" });
+      }
       if (question.minSelect > question.maxSelect) {
         context.addIssue({
           code: "custom",
@@ -330,6 +342,17 @@ export const careerImportSchema = z
           path: ["questions", index, "maxSelect"],
           message: "single-вопрос должен иметь max_select = 1",
         });
+      }
+    });
+
+    config.modules.forEach((module, index) => {
+      if (module.active && !module.forBachelor && !module.forMaster) {
+        context.addIssue({ code: "custom", path: ["modules", index, "forMaster"], message: "для активного модуля выберите хотя бы одну аудиторию" });
+      }
+    });
+    config.recommendations.forEach((recommendation, index) => {
+      if (recommendation.active && !recommendation.forBachelor && !recommendation.forMaster) {
+        context.addIssue({ code: "custom", path: ["recommendations", index, "forMaster"], message: "для активной рекомендации выберите хотя бы одну аудиторию" });
       }
     });
 
@@ -378,6 +401,11 @@ export const careerImportSchema = z
           message: `модуль ${mapping.moduleStableId} не найден`,
         });
       }
+      const question = questions.get(mapping.questionStableId);
+      const careerModule = moduleById.get(mapping.moduleStableId);
+      if (question && careerModule && !((question.forBachelor && careerModule.forBachelor) || (question.forMaster && careerModule.forMaster))) {
+        context.addIssue({ code: "custom", path: ["mappings", index], message: "аудитории вопроса и модуля не пересекаются" });
+      }
     });
 
     config.moduleRecommendations.forEach((link, index) => {
@@ -394,6 +422,11 @@ export const careerImportSchema = z
           path: ["moduleRecommendations", index, "recommendationStableId"],
           message: `рекомендация ${link.recommendationStableId} не найдена`,
         });
+      }
+      const careerModule = moduleById.get(link.moduleStableId);
+      const recommendation = recommendationById.get(link.recommendationStableId);
+      if (careerModule && recommendation && !((careerModule.forBachelor && recommendation.forBachelor) || (careerModule.forMaster && recommendation.forMaster))) {
+        context.addIssue({ code: "custom", path: ["moduleRecommendations", index], message: "аудитории модуля и рекомендации не пересекаются" });
       }
     });
 

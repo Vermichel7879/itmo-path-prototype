@@ -1,5 +1,6 @@
 import type { CareerImport } from "../db/import/import-model";
 import type { EngineRule } from "../db/config/typed-rules";
+import { filterCareerConfigByAudience, type EducationLevel } from "../career/audience";
 import type {
   EngineTestOverrides,
   PublicTrajectoryModule,
@@ -227,6 +228,10 @@ function buildRecommendations(
         publicRecommendation,
     ),
     ranking: eligible.map((candidate) => candidate.id),
+    selections: chosen.map((candidate) => ({
+      id: candidate.publicRecommendation.id,
+      sourceModuleId: moduleOrder[candidate.sourceRank] ?? null,
+    })),
   };
 }
 
@@ -235,7 +240,9 @@ export function calculateCareerTrajectoryDebug(
   config: CareerImport,
   selectedAnswerIds: string[],
   overrides: EngineTestOverrides = {},
+  educationLevel: EducationLevel = "MASTER",
 ): TrajectoryCalculation {
+  config = filterCareerConfigByAudience(config, educationLevel);
   const branchRule = requireRule(config, "CONDITIONAL_BRANCH");
   const selectedIdSet = new Set(selectedAnswerIds);
   const activeBranch = isEntrepreneurBranchActive(config, selectedIdSet);
@@ -538,6 +545,7 @@ export function calculateCareerTrajectoryDebug(
       recommendationRanking: recommendationResult.ranking,
       ignoredAnswerIds,
       entrepreneurChallengeIds,
+      recommendationSelections: recommendationResult.selections,
     },
   };
 }
@@ -546,6 +554,7 @@ export function calculateCareerTrajectory(
   configVersionId: string,
   config: CareerImport,
   selectedAnswerIds: string[],
+  educationLevel: EducationLevel = "MASTER",
 ): TrajectoryResult {
-  return calculateCareerTrajectoryDebug(configVersionId, config, selectedAnswerIds).result;
+  return calculateCareerTrajectoryDebug(configVersionId, config, selectedAnswerIds, {}, educationLevel).result;
 }

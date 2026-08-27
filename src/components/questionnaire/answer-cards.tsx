@@ -6,21 +6,13 @@ interface AnswerCardsProps {
   onToggle: (answerId: string) => void;
 }
 
-function CheckIcon() {
-  return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" className="h-4 w-4" fill="none">
-      <path d="m4.5 10.5 3.2 3.2 7.8-8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 export function AnswerCards({ question, selected, onToggle }: AnswerCardsProps) {
   const reachedLimit = question.type === "multi" && selected.length >= question.maxSelect;
 
   return (
     <fieldset aria-describedby={`${question.id}-instruction`}>
       <legend className="sr-only">{question.title}</legend>
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="answer-list">
         {question.answers.map((answer) => {
           const isSelected = selected.includes(answer.id);
           const isDisabled = reachedLimit && !isSelected;
@@ -30,8 +22,8 @@ export function AnswerCards({ question, selected, onToggle }: AnswerCardsProps) 
             <label
               key={answer.id}
               htmlFor={inputId}
-              className={`answer-card ${isSelected ? "answer-card--selected" : ""} ${
-                isDisabled ? "answer-card--disabled" : ""
+              className={`answer-row ${isSelected ? "answer-row--selected" : ""} ${
+                isDisabled ? "answer-row--disabled" : ""
               }`}
               aria-disabled={isDisabled}
             >
@@ -44,13 +36,8 @@ export function AnswerCards({ question, selected, onToggle }: AnswerCardsProps) 
                 onChange={() => onToggle(answer.id)}
                 className="sr-only"
               />
-              <span className="min-w-0 pr-3 text-[0.98rem] leading-6">{answer.text}</span>
-              <span
-                className={`answer-card__indicator ${isSelected ? "answer-card__indicator--selected" : ""}`}
-                aria-hidden="true"
-              >
-                {isSelected ? <CheckIcon /> : null}
-              </span>
+              <span className="answer-row__text">{answer.text}</span>
+              <span className="answer-row__control" aria-hidden="true" />
               <span className="sr-only">{isSelected ? "Выбрано" : "Не выбрано"}</span>
             </label>
           );

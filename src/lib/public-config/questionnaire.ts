@@ -1,4 +1,5 @@
 import type { CareerImport } from "../db/import/import-model";
+import { filterCareerConfigByAudience, type EducationLevel } from "../career/audience";
 
 export interface PublicQuestionnaireAnswer {
   id: string;
@@ -21,6 +22,7 @@ export interface PublicQuestionnaireQuestion {
 
 export interface PublicQuestionnaireDTO {
   configVersionId: string;
+  educationLevel: EducationLevel;
   questions: PublicQuestionnaireQuestion[];
 }
 
@@ -38,7 +40,9 @@ function instructionFor(question: CareerImport["questions"][number]) {
 export function buildPublicQuestionnaireDTO(
   configVersionId: string,
   config: CareerImport,
+  educationLevel: EducationLevel = "MASTER",
 ): PublicQuestionnaireDTO {
+  config = filterCareerConfigByAudience(config, educationLevel);
   const branchRule = config.engineRules.find(
     (rule) => rule.ruleKind === "CONDITIONAL_BRANCH",
   );
@@ -50,6 +54,7 @@ export function buildPublicQuestionnaireDTO(
 
   return {
     configVersionId,
+    educationLevel,
     questions: config.questions
       .filter((question) => question.active)
       .sort((left, right) => left.sortOrder - right.sortOrder)

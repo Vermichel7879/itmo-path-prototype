@@ -55,6 +55,7 @@ export interface TrajectoryDebug {
   recommendationRanking: string[];
   ignoredAnswerIds: string[];
   entrepreneurChallengeIds: string[];
+  recommendationSelections: Array<{ id: string; sourceModuleId: string | null }>;
 }
 
 export interface TrajectoryCalculation {

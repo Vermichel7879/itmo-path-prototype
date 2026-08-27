@@ -45,4 +45,16 @@ describe("canonical draft mutation", () => {
     expect(() => applyDraftMutationToSnapshot(currentConfig(), mutation))
       .toThrow();
   });
+
+  it("changes audience only in the cloned DRAFT snapshot", () => {
+    const current = currentConfig();
+    const next = applyDraftMutationToSnapshot(current, {
+      entityType: "QUESTION",
+      stableId: "Q1",
+      expectedUpdatedAt,
+      values: { forBachelor: true, forMaster: true },
+    });
+    expect(current.questions[0].forBachelor).toBe(false);
+    expect(next.questions[0]).toMatchObject({ forBachelor: true, forMaster: true });
+  });
 });
