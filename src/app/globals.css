@@ -856,6 +856,135 @@ summary {
   padding: 0.85rem;
 }
 
+.admin-relation-layout {
+  display: grid;
+  grid-template-columns: minmax(250px, 0.65fr) minmax(520px, 1.35fr);
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.admin-relation-picker {
+  display: grid;
+  align-content: start;
+  gap: 0.75rem;
+}
+
+.admin-relation-picker > label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.admin-relation-picker input {
+  width: 100%;
+  border: 1px solid #ccd1d9;
+  border-radius: 0.65rem;
+  background: white;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+.admin-relation-focus,
+.admin-relation-group,
+.admin-relation-items,
+.admin-relation-modules,
+.admin-relation-column,
+.admin-relation-link,
+.admin-relation-context {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-relation-group {
+  margin-top: 1.25rem;
+  border-top: 1px solid #dde1e7;
+  padding-top: 1.25rem;
+}
+
+.admin-relation-group h2,
+.admin-relation-column h3,
+.admin-relation-context > span {
+  margin: 0;
+}
+
+.admin-relation-group h2 {
+  font-size: 1.05rem;
+}
+
+.admin-relation-column h3,
+.admin-relation-context > span {
+  color: #656970;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.admin-relation-items {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.admin-relation-module {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.75rem;
+  border: 1px solid #dde1e7;
+  border-radius: 0.65rem;
+  padding: 0.85rem;
+}
+
+.admin-relation-node {
+  display: grid;
+  gap: 0.25rem;
+  min-width: 0;
+  border-left: 3px solid #ccd1d9;
+  background: #f7f8fa;
+  padding: 0.7rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-relation-node--focus {
+  border-left-color: #0b68ff;
+  background: #edf5ff;
+  padding: 1rem;
+}
+
+.admin-relation-node > small,
+.admin-relation-node > span {
+  color: #656970;
+  font-size: 0.75rem;
+}
+
+.admin-relation-node__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-top: 0.25rem;
+}
+
+.admin-relation-node__meta em,
+.admin-relation-link > b,
+.admin-relation-column > b {
+  width: fit-content;
+  border-radius: 999px;
+  background: #e8ebef;
+  padding: 0.2rem 0.45rem;
+  color: #34363a;
+  font-size: 0.7rem;
+  font-style: normal;
+}
+
+.admin-relation-node__meta .is-active {
+  background: #e5f5e9;
+  color: #176b32;
+}
+
+.admin-relation-node__meta .is-inactive {
+  background: #f3e8e8;
+  color: #8c2f2f;
+}
+
 .admin-preview-form,
 .admin-preview-form fieldset {
   display: grid;
@@ -880,6 +1009,10 @@ summary {
     grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
   }
   .admin-editor {
+    grid-template-columns: 1fr;
+  }
+  .admin-relation-layout,
+  .admin-relation-module {
     grid-template-columns: 1fr;
   }
   .admin-mapping-link__controls,

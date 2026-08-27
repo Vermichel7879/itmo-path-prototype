@@ -4,6 +4,14 @@ import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { patchRelationUpdate } from "./relation-update";
+import {
+  buildRelationFocusOptions,
+  buildRelationMapModel,
+  buildStructuralCounters,
+  structuralCounterLabel,
+  type RelationEntity,
+  type RelationEntityKind,
+} from "./relation-map";
 
 type Json = Record<string, unknown>;
 type Draft = { id: string; updatedAt: string; snapshot: Json; validation: { valid: boolean; issues: Json[] } };
@@ -665,6 +673,7 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
     void fetch("/api/admin/draft").then((response) => response.json()).then(setDraft);
   }, [section]);
   const items = useMemo(() => (draft?.snapshot[config.key] as Json[] | undefined) ?? [], [draft, config.key]);
+  const structuralCounters = useMemo(() => buildStructuralCounters(draft?.snapshot ?? {}), [draft]);
   const raw = items[selectedIndex] ?? items[0];
   const item = raw ? normalizeItem(config.entityType, raw) : null;
   const logicLocked = role !== "ADMIN" && ["WEIGHT", "RULE", "MODIFIER"].includes(config.entityType);
@@ -736,7 +745,6 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
   const answerById = new Map(answers.map((answer) => [String(answer.stableId), answer]));
   const moduleById = new Map(modules.map((careerModule) => [String(careerModule.stableId), careerModule]));
   const hasRelationPanel = ["ANSWER", "MODULE", "RECOMMENDATION"].includes(config.entityType);
-
   return <>
     <header className="admin-heading">
       <div><p className="eyebrow">DRAFT only</p><h1>{config.title}</h1></div>
@@ -749,10 +757,12 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
           const isMapping = config.entityType === "WEIGHT";
           const answer = isMapping ? answerById.get(String(candidate.answerStableId)) : null;
           const careerModule = isMapping ? moduleById.get(String(candidate.moduleStableId)) : null;
+          const counter = isMapping ? "" : structuralCounterLabel(config.entityType, String(candidate.stableId), structuralCounters);
           return <button key={`${String(candidate.stableId ?? index)}`} onClick={() => setSelectedIndex(index)} className={index === selectedIndex ? "active" : ""}>
             <strong>{isMapping ? `${String(candidate.answerStableId)} · ${String(answer?.text ?? "Ответ не найден")}` : String(candidate.stableId ?? candidate.answerStableId)}</strong>
             <span>{isMapping ? `→ ${String(candidate.moduleStableId)} · ${String(careerModule?.name ?? "Модуль не найден")}` : String(candidate.title ?? candidate.name ?? candidate.text ?? candidate.moduleStableId ?? "")}</span>
             {isMapping ? <small>Weight: {String(candidate.weight)}</small> : hasAudience ? <small>{audienceLabel(candidate)}</small> : null}
+            {counter ? <small>{counter}</small> : null}
           </button>;
         })}
       </div>
@@ -795,6 +805,88 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
             {logicLocked && <p className="admin-hint">Критическая логика доступна только ADMIN.</p>}
             {message && <p role="status">{message}</p>}
           </form>
+        </>}
+      </section>
+    </div>
+  </>;
+}
+
+const relationKindLabels: Record<RelationEntityKind, string> = {
+  QUESTION: "Вопрос",
+  ANSWER: "Ответ",
+  MODULE: "Модуль",
+  RECOMMENDATION: "Рекомендация",
+};
+
+function RelationEntitySummary({ entity, focused = false }: { entity: RelationEntity; focused?: boolean }) {
+  return (
+    <div className={focused ? "admin-relation-node admin-relation-node--focus" : "admin-relation-node"}>
+      <small>{relationKindLabels[entity.kind]}</small>
+      <strong>{entity.label}</strong>
+      <span>{entity.stableId}</span>
+      <div className="admin-relation-node__meta">
+        <em>{entity.audience}</em>
+        <em className={entity.active ? "is-active" : "is-inactive"}>{entity.active ? "active" : "inactive"}</em>
+        {entity.status ? <em>{entity.status}</em> : null}
+      </div>
+    </div>
+  );
+}
+
+function RelationMap() {
+  const [draft, setDraft] = useState<Draft | null>(null);
+  const [query, setQuery] = useState("");
+  const [focusKey, setFocusKey] = useState("");
+  useEffect(() => { void fetch("/api/admin/draft").then((response) => response.json()).then(setDraft); }, []);
+
+  const options = useMemo(() => draft ? buildRelationFocusOptions(draft.snapshot) : [], [draft]);
+  const counters = useMemo(() => draft ? buildStructuralCounters(draft.snapshot) : null, [draft]);
+  const selected = options.find((option) => `${option.kind}:${option.stableId}` === focusKey) ?? options.find((option) => option.kind === "MODULE") ?? options[0];
+  const model = useMemo(() => draft && selected ? buildRelationMapModel(draft.snapshot, selected) : null, [draft, selected]);
+  const normalizedQuery = query.trim().toLocaleLowerCase("ru");
+  const filteredOptions = options.filter((option) => !normalizedQuery || `${relationKindLabels[option.kind]} ${option.stableId} ${option.label}`.toLocaleLowerCase("ru").includes(normalizedQuery));
+  const answerIds = new Set(model?.answers.map((answer) => answer.stableId) ?? []);
+
+  if (!draft || !counters) return <p>Загрузка…</p>;
+
+  return <>
+    <header className="admin-heading">
+      <div><p className="eyebrow">Current DRAFT · read-only</p><h1>Карта связей</h1></div>
+      <span className="admin-status">Без изменений</span>
+    </header>
+    <p className="admin-hint">Выберите одну сущность, чтобы увидеть только её окружение. Редактирование остаётся в разделах «Ответы» и «Модули».</p>
+    <div className="admin-relation-layout">
+      <aside className="admin-relation-picker">
+        <label>Поиск по названию или Stable ID<input type="search" value={query} onChange={(event) => setQuery(event.currentTarget.value)} placeholder="Например, M01 или выбор направления" /></label>
+        <div className="admin-list">
+          {filteredOptions.map((option) => {
+            const key = `${option.kind}:${option.stableId}`;
+            return <button key={key} type="button" className={selected && key === `${selected.kind}:${selected.stableId}` ? "active" : ""} onClick={() => setFocusKey(key)}>
+              <small>{relationKindLabels[option.kind]}</small>
+              <strong>{option.label}</strong>
+              <span>{option.stableId}</span>
+              <small>{structuralCounterLabel(option.kind, option.stableId, counters)}</small>
+            </button>;
+          })}
+          {filteredOptions.length === 0 ? <p className="admin-hint">Ничего не найдено.</p> : null}
+        </div>
+      </aside>
+      <section className="admin-card admin-relation-focus">
+        {!model ? <p>Связи не найдены.</p> : <>
+          <RelationEntitySummary entity={model.focus} focused />
+          {model.question && model.focus.kind !== "QUESTION" ? <div className="admin-relation-context"><span>Принадлежит вопросу</span><RelationEntitySummary entity={model.question} /></div> : null}
+          {model.focus.kind === "QUESTION" ? <div className="admin-relation-group"><h2>Ответы · {model.answers.length}</h2><div className="admin-relation-items">{model.answers.map((answer) => <RelationEntitySummary key={answer.stableId} entity={answer} />)}</div></div> : null}
+          <div className="admin-relation-group">
+            <h2>{model.focus.kind === "MODULE" ? "Входящие ответы и рекомендации" : model.focus.kind === "RECOMMENDATION" ? "Использование в модулях" : "Модули и рекомендации"} · {model.modules.length}</h2>
+            {model.modules.length === 0 ? <p className="admin-hint">У выбранной сущности пока нет связей на этом уровне.</p> : <div className="admin-relation-modules">{model.modules.map((careerModule) => {
+              const incoming = model.focus.kind === "QUESTION" ? careerModule.incomingAnswers.filter((item) => answerIds.has(item.entity.stableId)) : careerModule.incomingAnswers;
+              return <article className="admin-relation-module" key={careerModule.entity.stableId}>
+                {(model.focus.kind === "MODULE" || model.focus.kind === "RECOMMENDATION" || model.focus.kind === "QUESTION") && incoming.length ? <div className="admin-relation-column"><h3>Входящие ответы</h3>{incoming.map((item) => <div className="admin-relation-link" key={`${item.entity.stableId}:${careerModule.entity.stableId}`}><RelationEntitySummary entity={item.entity} /><b>Weight {item.weight}</b></div>)}</div> : null}
+                <div className="admin-relation-column"><h3>Модуль</h3><RelationEntitySummary entity={careerModule.entity} />{careerModule.weight !== undefined && Number.isFinite(careerModule.weight) ? <b>Weight {careerModule.weight}</b> : null}</div>
+                <div className="admin-relation-column"><h3>Рекомендации</h3>{careerModule.recommendations.length ? careerModule.recommendations.map((item) => <div className="admin-relation-link" key={item.entity.stableId}><RelationEntitySummary entity={item.entity} /><b>Priority {item.priority}</b></div>) : <p className="admin-hint">Нет рекомендаций.</p>}</div>
+              </article>;
+            })}</div>}
+          </div>
         </>}
       </section>
     </div>
@@ -906,6 +998,7 @@ export function AdminConsole({ section = "overview", role }: { section?: string;
   if (section === "versions") return <Versions />;
   if (section === "audit") return <Audit />;
   if (section === "users") return <Users />;
+  if (section === "relations") return <RelationMap />;
   if (sectionConfig[section]) return <EntitySection section={section} role={role} />;
   return <p>Раздел не найден.</p>;
 }

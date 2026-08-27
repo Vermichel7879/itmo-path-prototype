@@ -10,6 +10,7 @@ const links = [
   ["Ответы", "/admin/answers"],
   ["Модули", "/admin/modules"],
   ["Маппинги", "/admin/mappings"],
+  ["Карта связей", "/admin/relations"],
   ["Рекомендации", "/admin/recommendations"],
   ["Возможности", "/admin/opportunities"],
   ["Модификаторы", "/admin/modifiers"],
