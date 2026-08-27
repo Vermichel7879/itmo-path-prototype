@@ -82,6 +82,35 @@ describe("admin domain RPC mappings", () => {
     );
   });
 
+  it("maps mapping CRUD to its atomic RPC with snapshot and audit", async () => {
+    const { client, rpc } = rpcClient({ id: configId, updatedAt: timestamp });
+    const api = createAdminDataApi(client);
+
+    await api.mutateMapping({
+      actorUserId: actorId,
+      expectedUpdatedAt: timestamp,
+      expectedSnapshotHash: hash,
+      operation: "DELETE",
+      answerStableId: "Q1_A1",
+      moduleStableId: "M01",
+      weight: null,
+      nextSnapshot: { mappings: [] },
+      audit: { operation: "DELETE", previous: { weight: 3 }, next: null },
+    });
+
+    expect(rpc).toHaveBeenCalledWith("admin_mutate_mapping", {
+      p_actor_user_id: actorId,
+      p_expected_updated_at: timestamp,
+      p_expected_snapshot_hash: hash,
+      p_operation: "DELETE",
+      p_answer_stable_id: "Q1_A1",
+      p_module_stable_id: "M01",
+      p_weight: null,
+      p_next_snapshot: { mappings: [] },
+      p_audit: { operation: "DELETE", previous: { weight: 3 }, next: null },
+    });
+  });
+
   it("maps publish to one atomic RPC with expected revision and hash", async () => {
     const { client, rpc } = rpcClient({
       id: configId,

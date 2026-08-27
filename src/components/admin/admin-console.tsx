@@ -54,6 +54,214 @@ function audienceLabel(item: Json) {
   return "Аудитория не выбрана";
 }
 
+function mappingErrorMessage(code: string | undefined) {
+  const messages: Record<string, string> = {
+    MAPPING_ALREADY_EXISTS: "Этот ответ уже связан с выбранным модулем.",
+    MAPPING_NOT_FOUND: "Связь уже удалена или не существует. Обновите страницу.",
+    MAPPING_AUDIENCE_INCOMPATIBLE: "Аудитории вопроса и модуля не пересекаются.",
+    ANSWER_NOT_FOUND: "Ответ больше не существует. Обновите страницу.",
+    MODULE_NOT_FOUND: "Модуль больше не существует. Обновите страницу.",
+    WEIGHT_REFERENCE_NOT_FOUND: "Ответ или модуль больше не существует.",
+    INVALID_DRAFT_MUTATION: "Weight должен быть целым числом от −10 до 10.",
+    DRAFT_MUTATION_INVALID_CONFIG: "Изменение нарушает целостность DRAFT-конфигурации.",
+    ADMIN_OPERATION_FAILED: "Изменение не прошло серверную проверку DRAFT-конфигурации.",
+    ADMIN_DATA_INVALID: "Параметры связи не прошли серверную проверку.",
+    ADMIN_DATA_API_ERROR: "Сервер не смог выполнить изменение. Обновите страницу и попробуйте снова.",
+    DRAFT_STALE_REVISION: "DRAFT изменён другим пользователем. Обновите страницу.",
+    ADMIN_FORBIDDEN: "Изменять mappings может только ADMIN.",
+    ADMIN_UNAUTHENTICATED: "Сессия завершена. Войдите в админку снова.",
+  };
+  return messages[code ?? ""] ?? "Не удалось изменить связь. Обновите страницу и попробуйте снова.";
+}
+
+function audiencesIntersect(question: Json | undefined, careerModule: Json) {
+  if (!question) return false;
+  return Boolean(
+    (question.forBachelor && careerModule.forBachelor) ||
+    (question.forMaster && careerModule.forMaster),
+  );
+}
+
+function AnswerMappings({
+  answer,
+  draft,
+  role,
+  onReload,
+}: {
+  answer: Json;
+  draft: Draft;
+  role: "ADMIN" | "EDITOR";
+  onReload: () => Promise<void>;
+}) {
+  const [message, setMessage] = useState("");
+  const [pendingKey, setPendingKey] = useState<string | null>(null);
+  const questions = draft.snapshot.questions as Json[];
+  const modules = draft.snapshot.modules as Json[];
+  const mappings = draft.snapshot.mappings as Json[];
+  const answerStableId = String(answer.stableId);
+  const question = questions.find(
+    (candidate) => candidate.stableId === answer.questionStableId,
+  );
+  const linked = mappings.filter(
+    (mapping) => mapping.answerStableId === answerStableId,
+  );
+  const linkedModuleIds = new Set(linked.map((mapping) => mapping.moduleStableId));
+  const availableModules = modules.filter(
+    (careerModule) =>
+      careerModule.active !== false &&
+      !linkedModuleIds.has(careerModule.stableId) &&
+      audiencesIntersect(question, careerModule),
+  );
+
+  async function mutateMapping(
+    operation: "CREATE" | "UPDATE" | "DELETE",
+    moduleStableId: string,
+    weight: number | null,
+  ) {
+    const careerModule = modules.find((candidate) => candidate.stableId === moduleStableId);
+    const moduleLabel = `${moduleStableId} · ${String(careerModule?.name ?? "Модуль")}`;
+    const confirmation = operation === "DELETE"
+      ? `Удалить только связь ${answerStableId} → ${moduleLabel}? Ответ и модуль останутся без изменений.`
+      : operation === "CREATE"
+        ? `Добавить связь ${answerStableId} → ${moduleLabel} с weight ${weight}?`
+        : `Изменить weight связи ${answerStableId} → ${moduleLabel} на ${weight}?`;
+    if (!window.confirm(confirmation)) return false;
+
+    const key = `${operation}:${moduleStableId}`;
+    setPendingKey(key);
+    setMessage("");
+    try {
+      const response = await fetch("/api/admin/draft", {
+        method: "PATCH",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          entityType: `MAPPING_${operation}`,
+          stableId: `${answerStableId}:${moduleStableId}`,
+          expectedUpdatedAt: draft.updatedAt,
+          values: operation === "DELETE" ? {} : { weight },
+        }),
+      });
+      const result = await response.json() as { error?: string };
+      if (!response.ok) {
+        setMessage(mappingErrorMessage(result.error));
+        return false;
+      }
+      setMessage(
+        operation === "CREATE"
+          ? "Связь добавлена в DRAFT."
+          : operation === "UPDATE"
+            ? "Weight обновлён в DRAFT."
+            : "Связь удалена из DRAFT.",
+      );
+      await onReload();
+      return true;
+    } catch {
+      setMessage("Не удалось связаться с сервером. Проверьте соединение и попробуйте снова.");
+      return false;
+    } finally {
+      setPendingKey(null);
+    }
+  }
+
+  return (
+    <section className="admin-mapping-manager" aria-labelledby={`mapping-title-${answerStableId}`}>
+      <div className="admin-mapping-manager__heading">
+        <div>
+          <h3 id={`mapping-title-${answerStableId}`}>Влияет на модули</h3>
+          <p>Связи определяют вклад выбранного ответа в score модулей.</p>
+        </div>
+        <strong>{linked.length}</strong>
+      </div>
+      {linked.length === 0 ? (
+        <p className="admin-mapping-empty">У ответа пока нет mappings. Это допустимое состояние.</p>
+      ) : (
+        <div className="admin-mapping-links">
+          {linked.map((mapping) => {
+            const careerModule = modules.find(
+              (candidate) => candidate.stableId === mapping.moduleStableId,
+            );
+            const moduleStableId = String(mapping.moduleStableId);
+            return (
+              <article className="admin-mapping-link" key={moduleStableId}>
+                <div className="admin-mapping-link__identity">
+                  <strong>{moduleStableId} · {String(careerModule?.name ?? "Модуль не найден")}</strong>
+                  {careerModule?.active === false ? <span>Модуль отключён</span> : null}
+                </div>
+                {role === "ADMIN" ? (
+                  <form
+                    className="admin-mapping-link__controls"
+                    onSubmit={(event) => {
+                      event.preventDefault();
+                      const weight = Number(new FormData(event.currentTarget).get("weight"));
+                      void mutateMapping("UPDATE", moduleStableId, weight);
+                    }}
+                  >
+                    <label>
+                      Weight
+                      <input name="weight" type="number" min="-10" max="10" step="1" defaultValue={Number(mapping.weight)} required />
+                    </label>
+                    <button className="button-secondary" disabled={pendingKey !== null}>Изменить</button>
+                    <button
+                      className="button-secondary"
+                      type="button"
+                      disabled={pendingKey !== null}
+                      onClick={() => void mutateMapping("DELETE", moduleStableId, null)}
+                    >
+                      Удалить связь
+                    </button>
+                  </form>
+                ) : (
+                  <p className="admin-mapping-link__weight">Weight: <strong>{String(mapping.weight)}</strong></p>
+                )}
+              </article>
+            );
+          })}
+        </div>
+      )}
+      {role === "ADMIN" ? (
+        availableModules.length ? (
+          <form
+            className="admin-mapping-create"
+            onSubmit={async (event) => {
+              event.preventDefault();
+              const form = event.currentTarget;
+              const data = new FormData(form);
+              const created = await mutateMapping(
+                "CREATE",
+                String(data.get("moduleStableId")),
+                Number(data.get("weight")),
+              );
+              if (created) form.reset();
+            }}
+          >
+            <h4>Добавить связь</h4>
+            <label>
+              Module
+              <select name="moduleStableId" required>
+                {availableModules.map((careerModule) => (
+                  <option key={String(careerModule.stableId)} value={String(careerModule.stableId)}>
+                    {String(careerModule.stableId)} · {String(careerModule.name)}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              Weight
+              <input name="weight" type="number" min="-10" max="10" step="1" defaultValue="1" required />
+            </label>
+            <button className="button-primary" disabled={pendingKey !== null}>Добавить</button>
+          </form>
+        ) : (
+          <p className="admin-hint">Нет доступных совместимых модулей для новой связи.</p>
+        )
+      ) : (
+        <p className="admin-hint">Mappings доступны EDITOR только для просмотра.</p>
+      )}
+      {message ? <p className="admin-mapping-message" role="status" aria-live="polite">{message}</p> : null}
+    </section>
+  );
+}
+
 type TypedLeaf = { path: string[]; value: string | number | boolean | null };
 
 function typedLeaves(input: unknown, path: string[] = []): TypedLeaf[] {
@@ -207,9 +415,10 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
     }
     if (["RULE", "MODIFIER", "WEIGHT"].includes(config.entityType) && !window.confirm("Сохранить изменение критической карьерной логики в DRAFT?")) return;
     const stableId = config.entityType === "WEIGHT" ? `${String(item.answerStableId)}:${String(item.moduleStableId)}` : String(item.stableId);
-    const response = await fetch("/api/admin/draft", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ entityType: config.entityType, stableId, expectedUpdatedAt: draft.updatedAt, values }) });
+    const entityType = config.entityType === "WEIGHT" ? "MAPPING_UPDATE" : config.entityType;
+    const response = await fetch("/api/admin/draft", { method: "PATCH", headers: { "content-type": "application/json" }, body: JSON.stringify({ entityType, stableId, expectedUpdatedAt: draft.updatedAt, values }) });
     const result = await response.json() as { error?: string };
-    if (!response.ok) { setMessage(result.error === "DRAFT_STALE_REVISION" ? "Данные изменены другим пользователем. Обновите страницу." : result.error ?? "Не удалось сохранить"); return; }
+    if (!response.ok) { setMessage(config.entityType === "WEIGHT" ? mappingErrorMessage(result.error) : result.error === "DRAFT_STALE_REVISION" ? "Данные изменены другим пользователем. Обновите страницу." : result.error ?? "Не удалось сохранить"); return; }
     setMessage("Сохранено");
     await load();
   }
@@ -244,7 +453,67 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
   const editorKey = item
     ? `${config.entityType}:${String(item.stableId ?? `${item.answerStableId}:${item.moduleStableId}`)}`
     : `${config.entityType}:empty`;
-  return <><header className="admin-heading"><div><p className="eyebrow">DRAFT only</p><h1>{config.title}</h1></div><span className={draft.validation.valid ? "admin-status" : "admin-status admin-status--error"}>{draft.validation.valid ? "Готово" : "Есть ошибки"}</span></header><CreateEntityForm entityType={config.entityType} draft={draft} onCreated={load} /><div className="admin-editor"><div className="admin-list">{items.map((candidate, index) => <button key={`${String(candidate.stableId ?? index)}`} onClick={() => setSelectedIndex(index)} className={index === selectedIndex ? "active" : ""}><strong>{String(candidate.stableId ?? candidate.answerStableId)}</strong><span>{String(candidate.title ?? candidate.name ?? candidate.text ?? candidate.moduleStableId ?? "")}</span>{hasAudience ? <small>{audienceLabel(candidate)}</small> : null}</button>)}</div><section className="admin-card">{!item && config.entityType === "OPPORTUNITY" ? <form className="admin-form" onSubmit={createOpportunity}><h2>Новая возможность</h2><label>Stable ID<input name="stableId" pattern="[A-Z][A-Z0-9_]*" required /></label><label>Тип<select name="type"><option>EVENT</option><option>CLUB</option><option>FACULTY</option><option>PRACTICE</option><option>INTERNSHIP</option><option>OTHER</option></select></label><label>Название<input name="title" required /></label><label>Описание<textarea name="description" required /></label><label>URL<input name="url" type="url" /></label><button className="button-primary">Создать в DRAFT</button>{message && <p>{message}</p>}</form> : !item ? <p>Записей пока нет.</p> : <form key={editorKey} onSubmit={save} className="admin-form"><h2>{String(item.stableId ?? item.answerStableId)}</h2>{hasAudience ? <fieldset><legend>Для кого</legend><label className="admin-checkbox"><input name="forBachelor" type="checkbox" defaultChecked={Boolean(item.forBachelor)} /> Бакалавриат</label><label className="admin-checkbox"><input name="forMaster" type="checkbox" defaultChecked={Boolean(item.forMaster)} /> Магистратура</label></fieldset> : null}{valueFields(config.entityType).filter((field) => !["forBachelor", "forMaster"].includes(field)).map((field) => typeof item[field] === "boolean" ? <label key={field} className="admin-checkbox"><input name={field} type="checkbox" defaultChecked={Boolean(item[field])} /> {field}</label> : <label key={field}>{field}{Array.isArray(item[field]) && <small>через запятую</small>}<textarea name={field} defaultValue={Array.isArray(item[field]) ? (item[field] as unknown[]).join(", ") : String(item[field] ?? "")} rows={["description", "goal", "sourceContent"].includes(field) ? 5 : 2} /></label>)}{config.entityType === "QUESTION" && <label>Условие показа<select name="showCondition" defaultValue={item.showCondition ? "ENTREPRENEUR_SIGNAL" : "ALWAYS"}><option value="ALWAYS">Показывать всегда</option><option value="ENTREPRENEUR_SIGNAL">Только при entrepreneur_signal</option></select></label>}{config.entityType === "RULE" && <TypedFields prefix="params" value={item.params} />}{config.entityType === "MODIFIER" && <><TypedFields prefix="effect" value={item.effect} /><TypedFields prefix="params" value={(item.operation as Json).params} /></>}{["RULE", "MODIFIER"].includes(config.entityType) && <details><summary>Typed JSON preview (read-only)</summary><pre>{JSON.stringify(item.params ?? item.operation, null, 2)}</pre></details>}{["RULE", "MODIFIER", "WEIGHT"].includes(config.entityType) && <p className="admin-hint">Критическая логика. Изменения доступны только ADMIN и проходят полную typed validation.</p>}<button className="button-primary" disabled={logicLocked}>Сохранить</button>{logicLocked && <p className="admin-hint">Критическая логика доступна только ADMIN.</p>}{message && <p role="status">{message}</p>}</form>}</section></div></>;
+  const answers = draft.snapshot.answers as Json[];
+  const modules = draft.snapshot.modules as Json[];
+  const answerById = new Map(answers.map((answer) => [String(answer.stableId), answer]));
+  const moduleById = new Map(modules.map((careerModule) => [String(careerModule.stableId), careerModule]));
+
+  return <>
+    <header className="admin-heading">
+      <div><p className="eyebrow">DRAFT only</p><h1>{config.title}</h1></div>
+      <span className={draft.validation.valid ? "admin-status" : "admin-status admin-status--error"}>{draft.validation.valid ? "Готово" : "Есть ошибки"}</span>
+    </header>
+    <CreateEntityForm entityType={config.entityType} draft={draft} onCreated={load} />
+    <div className="admin-editor">
+      <div className="admin-list">
+        {items.map((candidate, index) => {
+          const isMapping = config.entityType === "WEIGHT";
+          const answer = isMapping ? answerById.get(String(candidate.answerStableId)) : null;
+          const careerModule = isMapping ? moduleById.get(String(candidate.moduleStableId)) : null;
+          return <button key={`${String(candidate.stableId ?? index)}`} onClick={() => setSelectedIndex(index)} className={index === selectedIndex ? "active" : ""}>
+            <strong>{isMapping ? `${String(candidate.answerStableId)} · ${String(answer?.text ?? "Ответ не найден")}` : String(candidate.stableId ?? candidate.answerStableId)}</strong>
+            <span>{isMapping ? `→ ${String(candidate.moduleStableId)} · ${String(careerModule?.name ?? "Модуль не найден")}` : String(candidate.title ?? candidate.name ?? candidate.text ?? candidate.moduleStableId ?? "")}</span>
+            {isMapping ? <small>Weight: {String(candidate.weight)}</small> : hasAudience ? <small>{audienceLabel(candidate)}</small> : null}
+          </button>;
+        })}
+      </div>
+      <section className="admin-card">
+        {!item && config.entityType === "OPPORTUNITY" ? (
+          <form className="admin-form" onSubmit={createOpportunity}>
+            <h2>Новая возможность</h2>
+            <label>Stable ID<input name="stableId" pattern="[A-Z][A-Z0-9_]*" required /></label>
+            <label>Тип<select name="type"><option>EVENT</option><option>CLUB</option><option>FACULTY</option><option>PRACTICE</option><option>INTERNSHIP</option><option>OTHER</option></select></label>
+            <label>Название<input name="title" required /></label>
+            <label>Описание<textarea name="description" required /></label>
+            <label>URL<input name="url" type="url" /></label>
+            <button className="button-primary">Создать в DRAFT</button>{message && <p>{message}</p>}
+          </form>
+        ) : !item ? <p>Записей пока нет.</p> : <>
+          {config.entityType === "ANSWER" ? <>
+            <h2>{String(item.stableId)}</h2>
+            <AnswerMappings key={String(item.stableId)} answer={item} draft={draft} role={role} onReload={load} />
+          </> : null}
+          <form key={editorKey} onSubmit={save} className="admin-form">
+            {config.entityType !== "ANSWER" ? <h2>{String(item.stableId ?? item.answerStableId)}</h2> : null}
+            {config.entityType === "WEIGHT" ? <div className="admin-mapping-summary">
+              <p><strong>{String(item.answerStableId)} · {String(answerById.get(String(item.answerStableId))?.text ?? "Ответ не найден")}</strong></p>
+              <p>→ {String(item.moduleStableId)} · {String(moduleById.get(String(item.moduleStableId))?.name ?? "Модуль не найден")}</p>
+            </div> : null}
+            {hasAudience ? <fieldset><legend>Для кого</legend><label className="admin-checkbox"><input name="forBachelor" type="checkbox" defaultChecked={Boolean(item.forBachelor)} /> Бакалавриат</label><label className="admin-checkbox"><input name="forMaster" type="checkbox" defaultChecked={Boolean(item.forMaster)} /> Магистратура</label></fieldset> : null}
+            {valueFields(config.entityType).filter((field) => !["forBachelor", "forMaster"].includes(field)).map((field) => typeof item[field] === "boolean" ? <label key={field} className="admin-checkbox"><input name={field} type="checkbox" defaultChecked={Boolean(item[field])} /> {field}</label> : field === "weight" ? <label key={field}>Weight<input name={field} type="number" min="-10" max="10" step="1" defaultValue={Number(item[field])} required disabled={logicLocked} /></label> : <label key={field}>{field}{Array.isArray(item[field]) && <small>через запятую</small>}<textarea name={field} defaultValue={Array.isArray(item[field]) ? (item[field] as unknown[]).join(", ") : String(item[field] ?? "")} rows={["description", "goal", "sourceContent"].includes(field) ? 5 : 2} /></label>)}
+            {config.entityType === "QUESTION" && <label>Условие показа<select name="showCondition" defaultValue={item.showCondition ? "ENTREPRENEUR_SIGNAL" : "ALWAYS"}><option value="ALWAYS">Показывать всегда</option><option value="ENTREPRENEUR_SIGNAL">Только при entrepreneur_signal</option></select></label>}
+            {config.entityType === "RULE" && <TypedFields prefix="params" value={item.params} />}
+            {config.entityType === "MODIFIER" && <><TypedFields prefix="effect" value={item.effect} /><TypedFields prefix="params" value={(item.operation as Json).params} /></>}
+            {["RULE", "MODIFIER"].includes(config.entityType) && <details><summary>Typed JSON preview (read-only)</summary><pre>{JSON.stringify(item.params ?? item.operation, null, 2)}</pre></details>}
+            {["RULE", "MODIFIER", "WEIGHT"].includes(config.entityType) && <p className="admin-hint">Критическая логика. Изменения доступны только ADMIN и проходят полную typed validation.</p>}
+            <button className="button-primary" disabled={logicLocked}>Сохранить</button>
+            {logicLocked && <p className="admin-hint">Критическая логика доступна только ADMIN.</p>}
+            {message && <p role="status">{message}</p>}
+          </form>
+        </>}
+      </section>
+    </div>
+  </>;
 }
 
 function Preview() {

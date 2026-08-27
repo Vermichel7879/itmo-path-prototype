@@ -15,6 +15,8 @@ import { assertExpectedRevision } from "./concurrency";
 
 const timestampToken = z.iso.datetime({ offset: true });
 const stableId = z.string().trim().regex(/^[A-Z][A-Z0-9_]{0,99}$/);
+const mappingStableId = z.string().regex(/^[A-Z0-9_]+:[A-Z0-9_]+$/);
+const mappingWeight = z.number().int().min(-10).max(10);
 
 export const draftMutationSchema = z.discriminatedUnion("entityType", [
   z.object({
@@ -147,9 +149,21 @@ export const draftMutationSchema = z.discriminatedUnion("entityType", [
   }),
   z.object({
     entityType: z.literal("WEIGHT"),
-    stableId: z.string().regex(/^[A-Z0-9_]+:[A-Z0-9_]+$/),
+    stableId: mappingStableId,
     expectedUpdatedAt: timestampToken,
-    values: z.object({ weight: z.number().int().min(-10).max(10) }).strict(),
+    values: z.object({ weight: mappingWeight }).strict(),
+  }),
+  z.object({
+    entityType: z.enum(["MAPPING_CREATE", "MAPPING_UPDATE"]),
+    stableId: mappingStableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({ weight: mappingWeight }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("MAPPING_DELETE"),
+    stableId: mappingStableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({}).strict(),
   }),
   z.object({
     entityType: z.literal("RULE"),
@@ -209,6 +223,27 @@ export function applyDraftMutationToSnapshot(
     const entity = collection.find((item) => item.stableId === stableIdValue);
     if (!entity) throw new Error(error);
     return entity;
+  };
+  const mappingReferences = (stableIdValue: string, checkAudience: boolean) => {
+    const [answerStableId, moduleStableId] = stableIdValue.split(":");
+    const answer = snapshot.answers.find((item) => item.stableId === answerStableId);
+    if (!answer) throw new Error("ANSWER_NOT_FOUND");
+    const careerModule = snapshot.modules.find((item) => item.stableId === moduleStableId);
+    if (!careerModule) throw new Error("MODULE_NOT_FOUND");
+    const question = snapshot.questions.find(
+      (item) => item.stableId === answer.questionStableId,
+    );
+    if (!question) throw new Error("QUESTION_NOT_FOUND");
+    if (
+      checkAudience &&
+      !(
+        (question.forBachelor && careerModule.forBachelor) ||
+        (question.forMaster && careerModule.forMaster)
+      )
+    ) {
+      throw new Error("MAPPING_AUDIENCE_INCOMPATIBLE");
+    }
+    return { answer, careerModule };
   };
 
   switch (mutation.entityType) {
@@ -357,6 +392,47 @@ export function applyDraftMutationToSnapshot(
       }
       break;
     }
+    case "MAPPING_CREATE": {
+      const { answer, careerModule } = mappingReferences(mutation.stableId, true);
+      if (
+        snapshot.mappings.some(
+          (item) =>
+            item.answerStableId === answer.stableId &&
+            item.moduleStableId === careerModule.stableId,
+        )
+      ) {
+        throw new Error("MAPPING_ALREADY_EXISTS");
+      }
+      snapshot.mappings.push({
+        answerStableId: answer.stableId,
+        questionStableId: answer.questionStableId,
+        moduleStableId: careerModule.stableId,
+        weight: mutation.values.weight,
+      });
+      break;
+    }
+    case "MAPPING_UPDATE": {
+      const { answer, careerModule } = mappingReferences(mutation.stableId, true);
+      const mapping = snapshot.mappings.find(
+        (item) =>
+          item.answerStableId === answer.stableId &&
+          item.moduleStableId === careerModule.stableId,
+      );
+      if (!mapping) throw new Error("MAPPING_NOT_FOUND");
+      mapping.weight = mutation.values.weight;
+      break;
+    }
+    case "MAPPING_DELETE": {
+      const { answer, careerModule } = mappingReferences(mutation.stableId, false);
+      const index = snapshot.mappings.findIndex(
+        (item) =>
+          item.answerStableId === answer.stableId &&
+          item.moduleStableId === careerModule.stableId,
+      );
+      if (index < 0) throw new Error("MAPPING_NOT_FOUND");
+      snapshot.mappings.splice(index, 1);
+      break;
+    }
     case "RULE": {
       Object.assign(
         required(snapshot.engineRules, mutation.stableId, "RULE_NOT_FOUND"),
@@ -393,7 +469,14 @@ export async function mutateCurrentDraft(input: {
   role: AdminRole;
   mutation: DraftMutation;
 }) {
-  const capability = ["WEIGHT", "RULE", "MODIFIER"].includes(input.mutation.entityType) ||
+  const capability = [
+    "WEIGHT",
+    "MAPPING_CREATE",
+    "MAPPING_UPDATE",
+    "MAPPING_DELETE",
+    "RULE",
+    "MODIFIER",
+  ].includes(input.mutation.entityType) ||
     (input.mutation.entityType === "MODULE" && input.mutation.values.sortOrder !== undefined)
     ? "LOGIC_EDIT"
     : "CONTENT_EDIT";
@@ -407,20 +490,45 @@ export async function mutateCurrentDraft(input: {
   const snapshot = applyDraftMutationToSnapshot(draft.snapshot, input.mutation);
   const validation = validateDraftCareerConfig(snapshot);
   if (!validation.valid) throw new Error("DRAFT_MUTATION_INVALID_CONFIG");
+  const mappingOperation =
+    input.mutation.entityType === "MAPPING_CREATE"
+      ? "CREATE"
+      : input.mutation.entityType === "MAPPING_UPDATE"
+        ? "UPDATE"
+        : input.mutation.entityType === "MAPPING_DELETE"
+          ? "DELETE"
+          : null;
+  const audit = {
+    operation: mappingOperation,
+    changedFields: Object.keys(input.mutation.values),
+    previous: snapshotEntityValues(draft.snapshot, input.mutation),
+    next: mappingOperation === "DELETE" ? null : input.mutation.values,
+  };
   let result: Awaited<ReturnType<typeof adminDataApi.mutateDraft>>;
   try {
-    result = await adminDataApi.mutateDraft({
-      actorUserId: input.actorUserId,
-      expectedUpdatedAt: input.mutation.expectedUpdatedAt,
-      expectedSnapshotHash: draft.snapshotHash,
-      mutation: input.mutation,
-      nextSnapshot: snapshot,
-      audit: {
-        changedFields: Object.keys(input.mutation.values),
-        previous: snapshotEntityValues(draft.snapshot, input.mutation),
-        next: input.mutation.values,
-      },
-    });
+    if (mappingOperation) {
+      const [answerStableId, moduleStableId] = input.mutation.stableId.split(":");
+      result = await adminDataApi.mutateMapping({
+        actorUserId: input.actorUserId,
+        expectedUpdatedAt: input.mutation.expectedUpdatedAt,
+        expectedSnapshotHash: draft.snapshotHash,
+        operation: mappingOperation,
+        answerStableId,
+        moduleStableId,
+        weight: "weight" in input.mutation.values ? input.mutation.values.weight : null,
+        nextSnapshot: snapshot,
+        audit,
+      });
+    } else {
+      result = await adminDataApi.mutateDraft({
+        actorUserId: input.actorUserId,
+        expectedUpdatedAt: input.mutation.expectedUpdatedAt,
+        expectedSnapshotHash: draft.snapshotHash,
+        mutation: input.mutation,
+        nextSnapshot: snapshot,
+        audit,
+      });
+    }
   } catch (error) {
     if (
       error instanceof AdminDataApiError &&
@@ -437,7 +545,12 @@ function snapshotEntityValues(
   snapshot: ReturnType<typeof validateCareerImport>,
   mutation: DraftMutation,
 ) {
-  if (mutation.entityType === "WEIGHT") {
+  if (
+    mutation.entityType === "WEIGHT" ||
+    mutation.entityType === "MAPPING_CREATE" ||
+    mutation.entityType === "MAPPING_UPDATE" ||
+    mutation.entityType === "MAPPING_DELETE"
+  ) {
     const [answerStableId, moduleStableId] = mutation.stableId.split(":");
     const current = snapshot.mappings.find((item) => item.answerStableId === answerStableId && item.moduleStableId === moduleStableId);
     return current ? { weight: current.weight } : null;

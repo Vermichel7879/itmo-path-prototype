@@ -43,6 +43,13 @@
       "when": 1787822638754,
       "tag": "0005_trajectory-sessions-audience",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1787841003019,
+      "tag": "0006_admin-mapping-management",
+      "breakpoints": true
     }
   ]
 }

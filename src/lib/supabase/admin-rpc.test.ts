@@ -33,6 +33,21 @@ describe("admin Data API RPC boundary", () => {
     );
   });
 
+  it.each([
+    "MAPPING_ALREADY_EXISTS",
+    "MAPPING_AUDIENCE_INCOMPATIBLE",
+    "MAPPING_NOT_FOUND",
+    "ANSWER_NOT_FOUND",
+    "MODULE_NOT_FOUND",
+  ])("preserves the safe mapping error %s", async (message) => {
+    const client: AdminRpcClient = {
+      rpc: async () => ({ data: null, error: { code: "P0001", message } }),
+    };
+    await expect(
+      callAdminRpc("admin_mutate_mapping", {}, z.unknown(), client),
+    ).rejects.toEqual(new AdminDataApiError(message, "P0001"));
+  });
+
   it("replaces unknown PostgREST messages with a safe generic error", async () => {
     const client: AdminRpcClient = {
       rpc: async () => ({

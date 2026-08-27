@@ -736,6 +736,126 @@ summary {
   font-size: 0.75rem;
 }
 
+.admin-mapping-manager {
+  display: grid;
+  gap: 1rem;
+  margin-top: 1.5rem;
+  border-top: 1px solid #dde1e7;
+  padding-top: 1.5rem;
+}
+
+.admin-mapping-manager__heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-mapping-manager__heading h3,
+.admin-mapping-create h4,
+.admin-mapping-manager__heading p,
+.admin-mapping-summary p {
+  margin: 0;
+}
+
+.admin-mapping-manager__heading p,
+.admin-mapping-empty,
+.admin-mapping-link__identity span {
+  margin-top: 0.3rem;
+  color: #656970;
+  font-size: 0.85rem;
+}
+
+.admin-mapping-manager__heading > strong {
+  min-width: 2rem;
+  border-radius: 999px;
+  background: #edf5ff;
+  padding: 0.35rem 0.6rem;
+  color: #0755d6;
+  text-align: center;
+}
+
+.admin-mapping-links {
+  display: grid;
+  gap: 0.65rem;
+}
+
+.admin-mapping-link {
+  display: grid;
+  gap: 0.8rem;
+  border: 1px solid #dde1e7;
+  border-radius: 0.65rem;
+  padding: 0.85rem;
+}
+
+.admin-mapping-link__identity {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-mapping-link__identity span {
+  display: block;
+}
+
+.admin-mapping-link__controls,
+.admin-mapping-create {
+  display: grid;
+  align-items: end;
+  gap: 0.65rem;
+}
+
+.admin-mapping-link__controls {
+  grid-template-columns: minmax(90px, 0.5fr) auto auto;
+}
+
+.admin-mapping-create {
+  grid-template-columns: minmax(200px, 1fr) minmax(90px, 0.35fr) auto;
+  border-radius: 0.65rem;
+  background: #f7f8fa;
+  padding: 1rem;
+}
+
+.admin-mapping-create h4 {
+  grid-column: 1 / -1;
+}
+
+.admin-mapping-link__controls label,
+.admin-mapping-create label {
+  display: grid;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 650;
+}
+
+.admin-mapping-link__controls input,
+.admin-mapping-create input,
+.admin-mapping-create select {
+  width: 100%;
+  border: 1px solid #ccd1d9;
+  border-radius: 0.65rem;
+  background: white;
+  padding: 0.75rem;
+  font: inherit;
+}
+
+.admin-mapping-link__weight,
+.admin-mapping-message {
+  margin: 0;
+}
+
+.admin-mapping-message {
+  color: #34363a;
+  font-weight: 650;
+}
+
+.admin-mapping-summary {
+  display: grid;
+  gap: 0.35rem;
+  border-radius: 0.65rem;
+  background: #f7f8fa;
+  padding: 0.85rem;
+}
+
 .admin-preview-form,
 .admin-preview-form fieldset {
   display: grid;
@@ -761,6 +881,14 @@ summary {
   }
   .admin-editor {
     grid-template-columns: 1fr;
+  }
+  .admin-mapping-link__controls,
+  .admin-mapping-create {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .admin-mapping-create h4 {
+    grid-column: auto;
   }
 }
 
