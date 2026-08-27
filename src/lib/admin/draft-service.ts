@@ -483,7 +483,7 @@ export async function mutateCurrentDraft(input: {
   requireCapability(input.role, capability);
   const draft = await getCurrentDraftConfig();
   try {
-    assertExpectedRevision(new Date(draft.updatedAt), input.mutation.expectedUpdatedAt);
+    assertExpectedRevision(draft.updatedAt, input.mutation.expectedUpdatedAt);
   } catch {
     throw new DraftConflictError();
   }

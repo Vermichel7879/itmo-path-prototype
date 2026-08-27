@@ -296,3 +296,72 @@ describe("mapping mutation orchestration", () => {
     expect(mutateMapping).not.toHaveBeenCalled();
   });
 });
+
+describe("draft revision flow", () => {
+  const draftId = "00000000-0000-4000-8000-000000000003";
+  const actorUserId = "00000000-0000-4000-8000-000000000001";
+  const firstRevision = "2026-08-25T10:44:46.00859+00:00";
+  const secondRevision = "2026-08-25T10:45:01.123456+00:00";
+  const thirdRevision = "2026-08-25T10:45:02.654321+00:00";
+
+  function draftAt(updatedAt: string) {
+    return {
+      id: draftId,
+      updatedAt,
+      snapshotHash: "a".repeat(64),
+      snapshot: currentConfig(),
+    };
+  }
+
+  it("accepts a fresh GET revision and then the revision returned by the first save", async () => {
+    let currentRevision = firstRevision;
+    vi.spyOn(adminDataApi, "getDraft").mockImplementation(async () => draftAt(currentRevision));
+    const mutateDraft = vi.spyOn(adminDataApi, "mutateDraft").mockImplementation(async (input) => {
+      expect(input.expectedUpdatedAt).toBe(currentRevision);
+      currentRevision = currentRevision === firstRevision ? secondRevision : thirdRevision;
+      return { id: draftId, updatedAt: currentRevision };
+    });
+
+    const firstSave = await mutateCurrentDraft({
+      actorUserId,
+      role: "ADMIN",
+      mutation: {
+        entityType: "ANSWER",
+        stableId: "Q1_A1",
+        expectedUpdatedAt: firstRevision,
+        values: { text: "Первое сохранение" },
+      },
+    });
+    expect(firstSave.updatedAt).toBe(secondRevision);
+
+    const secondSave = await mutateCurrentDraft({
+      actorUserId,
+      role: "ADMIN",
+      mutation: {
+        entityType: "ANSWER",
+        stableId: "Q1_A1",
+        expectedUpdatedAt: firstSave.updatedAt,
+        values: { text: "Второе сохранение" },
+      },
+    });
+    expect(secondSave.updatedAt).toBe(thirdRevision);
+    expect(mutateDraft).toHaveBeenCalledTimes(2);
+  });
+
+  it("rejects the revision loaded before a concurrent mutation", async () => {
+    vi.spyOn(adminDataApi, "getDraft").mockResolvedValue(draftAt(secondRevision));
+    const mutateDraft = vi.spyOn(adminDataApi, "mutateDraft");
+
+    await expect(mutateCurrentDraft({
+      actorUserId,
+      role: "ADMIN",
+      mutation: {
+        entityType: "ANSWER",
+        stableId: "Q1_A1",
+        expectedUpdatedAt: firstRevision,
+        values: { text: "Устаревшее сохранение" },
+      },
+    })).rejects.toThrow("DRAFT_STALE_REVISION");
+    expect(mutateDraft).not.toHaveBeenCalled();
+  });
+});
