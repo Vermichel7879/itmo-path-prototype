@@ -31,6 +31,6 @@ export async function GET() {
       health: { database: "OK", migration: 4 },
     });
   } catch (error) {
-    return adminApiError(error);
+    return adminApiError(error, { readOnly: true });
   }
 }

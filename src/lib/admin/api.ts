@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { AdminAuthorizationError } from "@/lib/auth/permissions";
 import { getCurrentAdminSession } from "@/lib/auth/request";
+import { AdminDataApiError } from "@/lib/supabase/admin-rpc";
 
 import { DraftConflictError } from "./draft-service";
 
@@ -41,7 +42,7 @@ class AdminApiAuthenticationError extends Error {
   }
 }
 
-export function adminApiError(error: unknown) {
+export function adminApiError(error: unknown, options: { readOnly?: boolean } = {}) {
   if (
     error instanceof AdminApiAuthenticationError ||
     error instanceof AdminAuthorizationError ||
@@ -52,6 +53,13 @@ export function adminApiError(error: unknown) {
   if (error instanceof Error && safeOperationErrors.has(error.message)) {
     const status = error.message === "LAST_ACTIVE_ADMIN_PROTECTED" ? 409 : 422;
     return NextResponse.json({ error: error.message }, { status });
+  }
+  if (
+    options.readOnly &&
+    error instanceof AdminDataApiError &&
+    error.category === "TRANSPORT"
+  ) {
+    return NextResponse.json({ error: "ADMIN_READ_UNAVAILABLE" }, { status: 503 });
   }
   return NextResponse.json({ error: "ADMIN_OPERATION_FAILED" }, { status: 422 });
 }

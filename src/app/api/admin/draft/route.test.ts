@@ -4,7 +4,12 @@ const firstRevision = "2026-08-27T18:07:55.064871+00:00";
 const secondRevision = "2026-08-27T18:08:01.123456+00:00";
 const thirdRevision = "2026-08-27T18:08:02.654321+00:00";
 
-const { getCurrentDraftConfig, mutateCurrentDraft } = vi.hoisted(() => ({
+const { adminApiError, getCurrentDraftConfig, mutateCurrentDraft } = vi.hoisted(() => ({
+  adminApiError: vi.fn((error: Error, options?: { readOnly?: boolean }) =>
+    Response.json(
+      { error: options?.readOnly ? "ADMIN_READ_UNAVAILABLE" : error.message },
+      { status: options?.readOnly ? 503 : 422 },
+    )),
   getCurrentDraftConfig: vi.fn(),
   mutateCurrentDraft: vi.fn(),
 }));
@@ -12,7 +17,7 @@ const { getCurrentDraftConfig, mutateCurrentDraft } = vi.hoisted(() => ({
 vi.mock("@/lib/auth/request", () => ({ assertTrustedOrigin: vi.fn() }));
 vi.mock("@/lib/admin/api", () => ({
   requireAdminApiSession: vi.fn(async () => ({ userId: "actor-id", role: "ADMIN" })),
-  adminApiError: (error: Error) => Response.json({ error: error.message }, { status: 422 }),
+  adminApiError,
 }));
 vi.mock("@/lib/admin/draft-service", () => ({
   draftMutationSchema: { safeParse: (data: unknown) => ({ success: true, data }) },
@@ -60,5 +65,13 @@ describe("admin DRAFT route revision flow", () => {
     }));
     expect(second.status).toBe(200);
     expect(await second.json()).toMatchObject({ updatedAt: thirdRevision });
+  });
+
+  it("uses read-only error mapping when DRAFT loading fails", async () => {
+    const error = new Error("transport exhausted");
+    getCurrentDraftConfig.mockRejectedValue(error);
+    const response = await GET();
+    expect(response.status).toBe(503);
+    expect(adminApiError).toHaveBeenCalledWith(error, { readOnly: true });
   });
 });

@@ -36,4 +36,13 @@ describe("admin draft client", () => {
     await expect(Promise.all([first, second])).resolves.toEqual([validDraft, validDraft]);
     expect(fetchDraft).toHaveBeenCalledTimes(1);
   });
+
+  it("starts a new request when the user retries after a failed read", async () => {
+    const fetchDraft = vi.fn()
+      .mockResolvedValueOnce({ ok: false, json: async () => ({ error: "ADMIN_READ_UNAVAILABLE" }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => validDraft });
+    await expect(fetchAdminDraft(fetchDraft)).rejects.toThrow("ADMIN_DRAFT_UNAVAILABLE");
+    await expect(fetchAdminDraft(fetchDraft)).resolves.toEqual(validDraft);
+    expect(fetchDraft).toHaveBeenCalledTimes(2);
+  });
 });

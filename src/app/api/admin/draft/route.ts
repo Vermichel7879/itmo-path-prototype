@@ -15,7 +15,7 @@ export async function GET() {
     await requireAdminApiSession();
     return NextResponse.json(await getCurrentDraftConfig());
   } catch (error) {
-    return adminApiError(error);
+    return adminApiError(error, { readOnly: true });
   }
 }
 
