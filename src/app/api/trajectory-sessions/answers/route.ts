@@ -2,6 +2,11 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 
 import { trajectoryDataApi } from "@/lib/trajectory/data-api";
+import {
+  measureServerTiming,
+  type ServerTimingMetrics,
+  withServerTiming,
+} from "@/lib/http/server-timing";
 
 const answerSaveSchema = z
   .object({
@@ -12,14 +17,25 @@ const answerSaveSchema = z
   .strict();
 
 export async function PUT(request: Request) {
+  const requestStartedAt = Date.now();
+  const timings: ServerTimingMetrics = {};
+  const respond = (body: unknown, status = 200) => withServerTiming(
+    NextResponse.json(body, { status }),
+    requestStartedAt,
+    timings,
+  );
   try {
     const parsed = answerSaveSchema.safeParse(await request.json());
     if (!parsed.success) {
-      return NextResponse.json({ error: "INVALID_ANSWER_DATA" }, { status: 400 });
+      return respond({ error: "INVALID_ANSWER_DATA" }, 400);
     }
-    await trajectoryDataApi.replaceAnswers(parsed.data);
-    return NextResponse.json({ ok: true });
+    await measureServerTiming(
+      timings,
+      ["session_write", "data_api"],
+      () => trajectoryDataApi.replaceAnswers(parsed.data),
+    );
+    return respond({ ok: true });
   } catch {
-    return NextResponse.json({ error: "ANSWER_SAVE_UNAVAILABLE" }, { status: 503 });
+    return respond({ error: "ANSWER_SAVE_UNAVAILABLE" }, 503);
   }
 }

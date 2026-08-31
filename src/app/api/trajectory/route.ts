@@ -7,45 +7,72 @@ import {
   validateQuestionnaireSelection,
 } from "@/lib/rule-engine/validate-selection";
 import { filterCareerConfigByAudience } from "@/lib/career/audience";
-import { validatePinnedEngineConfig } from "@/lib/public-config/engine-config";
+import { readPinnedEngineConfig } from "@/lib/public-config/engine-config-read";
 import { AdminDataApiError } from "@/lib/supabase/admin-rpc";
 import { trajectoryDataApi } from "@/lib/trajectory/data-api";
 import { buildTrajectoryCompletionPayload } from "@/lib/trajectory/persistence";
+import {
+  measureServerTiming,
+  type ServerTimingMetrics,
+  withServerTiming,
+} from "@/lib/http/server-timing";
 
 export async function POST(request: Request) {
   const requestStartedAt = Date.now();
   const timings: Record<string, number> = {};
+  const serverTimings: ServerTimingMetrics = {};
+  const respond = (body: unknown, status = 200) => withServerTiming(
+    NextResponse.json(body, { status }),
+    requestStartedAt,
+    serverTimings,
+  );
   let stage = "request";
   let stageStartedAt = requestStartedAt;
   try {
     const parsed = trajectoryRequestSchema.safeParse(await request.json());
     timings.request = Date.now() - stageStartedAt;
     if (!parsed.success) {
-      return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400 });
+      return respond({ error: "INVALID_REQUEST" }, 400);
     }
     stage = "session-lookup";
     stageStartedAt = Date.now();
-    const session = await trajectoryDataApi.getContext(parsed.data.sessionId);
+    const session = await measureServerTiming(
+      serverTimings,
+      ["session_read", "data_api"],
+      () => trajectoryDataApi.getContext(parsed.data.sessionId),
+    );
     timings.sessionLookup = Date.now() - stageStartedAt;
     if (!session || session.status !== "IN_PROGRESS") {
-      return NextResponse.json({ error: "SESSION_NOT_IN_PROGRESS" }, { status: 409 });
+      return respond({ error: "SESSION_NOT_IN_PROGRESS" }, 409);
     }
     if (session.configVersionId !== parsed.data.configVersionId) {
-      return NextResponse.json({ error: "CONFIG_VERSION_MISMATCH" }, { status: 409 });
+      return respond({ error: "CONFIG_VERSION_MISMATCH" }, 409);
     }
     stage = "pinned-config-read";
     stageStartedAt = Date.now();
-    const pinnedConfig = await trajectoryDataApi.getPinnedEngineConfig(session.configVersionId);
+    const configReadStartedAt = Date.now();
+    const engineRead = await readPinnedEngineConfig(
+      session.configVersionId,
+      trajectoryDataApi,
+    ).catch((error) => {
+      const duration = Date.now() - configReadStartedAt;
+      serverTimings.config_read = duration;
+      serverTimings.data_api = (serverTimings.data_api ?? 0) + duration;
+      serverTimings.config_cache_miss = 0;
+      throw error;
+    });
     timings.pinnedConfigRead = Date.now() - stageStartedAt;
-    if (!pinnedConfig) {
-      return NextResponse.json({ error: "CONFIG_VERSION_NOT_PUBLISHED" }, { status: 409 });
+    serverTimings.config_read = engineRead.timing.totalMs;
+    serverTimings.data_api = (serverTimings.data_api ?? 0) + engineRead.timing.dataApiReadMs;
+    serverTimings.validation = engineRead.timing.validationMs;
+    serverTimings[`config_cache_${engineRead.timing.cacheStatus.toLowerCase()}`] = 0;
+    if (!engineRead.config) {
+      return respond({ error: "CONFIG_VERSION_NOT_PUBLISHED" }, 409);
     }
-    stage = "engine-config-validation";
-    stageStartedAt = Date.now();
-    const published = validatePinnedEngineConfig(pinnedConfig);
-    timings.engineConfigValidation = Date.now() - stageStartedAt;
+    const published = engineRead.config;
+    timings.engineConfigValidation = engineRead.timing.validationMs;
     if (published.configVersionId !== session.configVersionId) {
-      return NextResponse.json({ error: "CONFIG_VERSION_MISMATCH" }, { status: 409 });
+      return respond({ error: "CONFIG_VERSION_MISMATCH" }, 409);
     }
     stage = "answers-validation";
     stageStartedAt = Date.now();
@@ -55,6 +82,7 @@ export async function POST(request: Request) {
       session.educationLevel,
     );
     timings.answersValidation = Date.now() - stageStartedAt;
+    serverTimings.validation += timings.answersValidation;
     stage = "rule-engine";
     stageStartedAt = Date.now();
     const calculation = calculateCareerTrajectoryDebug(
@@ -65,25 +93,30 @@ export async function POST(request: Request) {
         session.educationLevel,
       );
     timings.ruleEngine = Date.now() - stageStartedAt;
+    serverTimings.rule_engine = timings.ruleEngine;
     const audienceConfig = filterCareerConfigByAudience(
       published.config,
       session.educationLevel,
     );
     stage = "result-persistence";
     stageStartedAt = Date.now();
-    await trajectoryDataApi.complete({
-      sessionId: session.id,
-      selectedAnswerIds: selection.effectiveAnswerIds,
-      payload: buildTrajectoryCompletionPayload(
-        audienceConfig,
-        selection.effectiveAnswerIds,
-        calculation,
-      ),
-    });
+    await measureServerTiming(
+      serverTimings,
+      ["completion_write", "session_write", "data_api"],
+      () => trajectoryDataApi.complete({
+        sessionId: session.id,
+        selectedAnswerIds: selection.effectiveAnswerIds,
+        payload: buildTrajectoryCompletionPayload(
+          audienceConfig,
+          selection.effectiveAnswerIds,
+          calculation,
+        ),
+      }),
+    );
     timings.resultPersistence = Date.now() - stageStartedAt;
     stage = "response";
     stageStartedAt = Date.now();
-    const response = NextResponse.json(calculation.result);
+    const response = respond(calculation.result);
     timings.response = Date.now() - stageStartedAt;
     const totalDurationMs = Date.now() - requestStartedAt;
     if (totalDurationMs > 2_000) {
@@ -92,10 +125,7 @@ export async function POST(request: Request) {
     return response;
   } catch (error) {
     if (error instanceof QuestionnaireValidationError) {
-      return NextResponse.json(
-        { error: error.code, questionId: error.questionId },
-        { status: 422 },
-      );
+      return respond({ error: error.code, questionId: error.questionId }, 422);
     }
     if (!(stage in timings)) timings[stage] = Date.now() - stageStartedAt;
     console.error("[TRAJECTORY_FAILED]", {
@@ -106,6 +136,6 @@ export async function POST(request: Request) {
       ...timings,
       totalDurationMs: Date.now() - requestStartedAt,
     });
-    return NextResponse.json({ error: "TRAJECTORY_UNAVAILABLE" }, { status: 503 });
+    return respond({ error: "TRAJECTORY_UNAVAILABLE" }, 503);
   }
 }

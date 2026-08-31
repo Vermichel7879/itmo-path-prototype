@@ -28,8 +28,17 @@ describe("public trajectory flow architecture", () => {
 
   it("reads the exact pinned engine configuration through Data API", () => {
     const route = readFileSync(resolve("src/app/api/trajectory/route.ts"), "utf8");
-    expect(route).toContain("getPinnedEngineConfig(session.configVersionId)");
+    const reader = readFileSync(resolve("src/lib/public-config/engine-config-read.ts"), "utf8");
+    expect(route).toContain("readPinnedEngineConfig(\n      session.configVersionId");
     expect(route).not.toContain("getPublishedCareerConfigById");
-    expect(route).toContain("validatePinnedEngineConfig");
+    expect(reader).toContain("validatePinnedEngineConfig(compact)");
+  });
+
+  it("keeps immutable public config caching out of DRAFT and admin Preview", () => {
+    const draft = readFileSync(resolve("src/lib/admin/draft-service.ts"), "utf8");
+    const preview = readFileSync(resolve("src/app/api/admin/preview/route.ts"), "utf8");
+    expect(draft).not.toContain("immutable-version-cache");
+    expect(preview).not.toContain("immutable-version-cache");
+    expect(preview).not.toContain("readPinnedEngineConfig");
   });
 });
