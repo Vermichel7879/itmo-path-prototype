@@ -1,14 +1,15 @@
 import "server-only";
 
+import { cache } from "react";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import { ADMIN_SESSION_COOKIE, resolveAdminSession } from "./service";
 
-export async function getCurrentAdminSession() {
+export const getCurrentAdminSession = cache(async () => {
   const token = (await cookies()).get(ADMIN_SESSION_COOKIE)?.value;
   return resolveAdminSession(token);
-}
+});
 
 export async function requireAdminPageSession() {
   const session = await getCurrentAdminSession();

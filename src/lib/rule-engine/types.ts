@@ -48,14 +48,44 @@ export interface TrajectoryResult {
 export interface TrajectoryDebug {
   scores: Record<string, number>;
   questionSubtotals: Record<string, Record<string, number>>;
+  scoreContributions: Array<{
+    moduleId: string;
+    questionId: string;
+    answerId: string;
+    weight: number;
+  }>;
   ranking: string[];
+  tieBreakQuestionIds: string[];
   guardedModules: string[];
   fallbackReason: string | null;
+  fallbackConditionIndex: number | null;
+  supportThreshold: number;
+  maxSupportCount: number;
+  primaryModuleId: string;
+  supportModuleIds: string[];
   appliedModifierIds: string[];
+  modifierApplications: Array<{
+    id: string;
+    targetModuleId: string;
+    operationKind: string;
+    triggerAnswerIds: string[];
+  }>;
+  selectedAnswerIds: string[];
+  entrepreneurBranchActive: boolean;
   recommendationRanking: string[];
   ignoredAnswerIds: string[];
   entrepreneurChallengeIds: string[];
-  recommendationSelections: Array<{ id: string; sourceModuleId: string | null }>;
+  recommendationSelections: Array<{
+    id: string;
+    recommendationId: string;
+    sourceModuleId: string | null;
+    source: "PRIMARY" | "SUPPORT" | "SPECIAL";
+    linkPriority: number;
+    challengeBoost: boolean;
+    preferenceBoost: boolean;
+    priorityTagBoost: boolean;
+    opportunityResolved: boolean;
+  }>;
 }
 
 export interface TrajectoryCalculation {

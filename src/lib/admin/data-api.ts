@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import {
   callAdminRpc,
+  type AdminRpcCallOptions,
   type AdminRpcClient,
 } from "@/lib/supabase/admin-rpc";
 
@@ -121,10 +122,11 @@ export function createAdminDataApi(client?: AdminRpcClient) {
     functionName: string,
     args: Record<string, unknown>,
     schema: z.ZodType<T>,
+    options?: AdminRpcCallOptions,
   ) =>
     client
-      ? callAdminRpc(functionName, args, schema, client)
-      : callAdminRpc(functionName, args, schema);
+      ? callAdminRpc(functionName, args, schema, client, options)
+      : callAdminRpc(functionName, args, schema, undefined, options);
 
   return {
     getLoginContext(input: {
@@ -185,6 +187,7 @@ export function createAdminDataApi(client?: AdminRpcClient) {
         "admin_resolve_session",
         { p_token_hash: tokenHash, p_now: now },
         sessionSchema,
+        { retryTransportOnce: true, timeoutMs: 10_000 },
       );
     },
     revokeSession(tokenHash: string, revokedAt: string) {
@@ -231,7 +234,12 @@ export function createAdminDataApi(client?: AdminRpcClient) {
       );
     },
     getDraft() {
-      return rpc("admin_get_draft", {}, draftRecordSchema);
+      return rpc(
+        "admin_get_draft",
+        {},
+        draftRecordSchema,
+        { retryTransportOnce: true, timeoutMs: 10_000 },
+      );
     },
     mutateDraft(input: {
       actorUserId: string;

@@ -18,6 +18,27 @@ function rpcClient(data: unknown) {
 }
 
 describe("admin domain RPC mappings", () => {
+  it("retries one transient transport failure while reading the DRAFT", async () => {
+    vi.spyOn(console, "error").mockImplementation(() => undefined);
+    const rpc = vi.fn()
+      .mockResolvedValueOnce({
+        data: null,
+        error: { code: "", message: "TypeError: fetch failed", details: "read ECONNRESET" },
+      })
+      .mockResolvedValueOnce({
+        data: {
+          id: configId,
+          updatedAt: timestamp,
+          snapshotHash: hash,
+          snapshot: {},
+        },
+        error: null,
+      });
+    const api = createAdminDataApi({ rpc } as AdminRpcClient);
+    await expect(api.getDraft()).resolves.toMatchObject({ id: configId });
+    expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
   it("maps login completion without sending plaintext credentials", async () => {
     const { client, rpc } = rpcClient({ sessionId: userId });
     const api = createAdminDataApi(client);

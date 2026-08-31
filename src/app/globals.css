@@ -997,6 +997,102 @@ summary {
   padding: 1rem;
 }
 
+.admin-preview-level {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.admin-preview-level h2 {
+  margin: 0 auto 0 0;
+}
+
+.admin-preview-level label,
+.admin-preview-form label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.admin-preview-level input,
+.admin-preview-form label input {
+  width: auto;
+  margin-top: 0.2rem;
+}
+
+.admin-preview-result,
+.admin-preview-debugger {
+  margin-top: 1rem;
+}
+
+.admin-preview-debugger,
+.admin-debug-grid,
+.admin-debug-ranking,
+.admin-debug-ranking li,
+.admin-debug-block {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-debug-grid {
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+}
+
+.admin-debug-grid article {
+  border-left: 3px solid #ccd1d9;
+  background: #f7f8fa;
+  padding: 0.85rem;
+}
+
+.admin-debug-grid h4,
+.admin-debug-grid p,
+.admin-debug-block p {
+  margin: 0 0 0.5rem;
+}
+
+.admin-debug-grid ul {
+  display: grid;
+  gap: 0.35rem;
+  padding-left: 1.2rem;
+}
+
+.admin-debug-grid li {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.admin-debug-ranking {
+  padding-left: 1.5rem;
+}
+
+.admin-debug-ranking li {
+  grid-template-columns: 1fr auto;
+  border-bottom: 1px solid #dde1e7;
+  padding-bottom: 0.65rem;
+}
+
+.admin-debug-ranking li > div {
+  display: grid;
+}
+
+.admin-debug-ranking li > b {
+  font-size: 1.25rem;
+}
+
+.admin-debug-ranking li > p {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: #656970;
+}
+
+.admin-debug-notice {
+  border-left: 3px solid #0b68ff;
+  background: #edf5ff;
+  padding: 0.85rem;
+}
+
 @media (max-width: 900px) {
   .admin-shell {
     grid-template-columns: 1fr;

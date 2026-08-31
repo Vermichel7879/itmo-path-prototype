@@ -3,7 +3,19 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import type { AdminPreviewExplanation } from "@/lib/admin/preview-debug";
+import type { EducationLevel } from "@/lib/career/audience";
+import type { PublicQuestionnaireDTO } from "@/lib/public-config/questionnaire";
+import type { TrajectoryDebug, TrajectoryResult } from "@/lib/rule-engine/types";
 import { patchRelationUpdate } from "./relation-update";
+import {
+  canCalculatePreview,
+  previewRadioGroupName,
+  selectedPreviewAnswerIds,
+  updatePreviewAnswer,
+  visiblePreviewQuestions,
+  type PreviewAnswers,
+} from "./preview-state";
 import {
   buildRelationFocusOptions,
   buildRelationMapModel,
@@ -893,14 +905,111 @@ function RelationMap() {
   </>;
 }
 
+type PreviewCalculation = {
+  result: TrajectoryResult;
+  debug: TrajectoryDebug;
+  explanation: AdminPreviewExplanation;
+};
+
+function PreviewResult({ calculation }: { calculation: PreviewCalculation }) {
+  const { result } = calculation;
+  return <section className="admin-card admin-preview-result">
+    <p className="eyebrow">Public-style result</p>
+    <h2>{result.primaryModule.name}</h2>
+    <p>{result.primaryModule.goal}</p>
+    {result.supportModules.length ? <p><strong>Support:</strong> {result.supportModules.map((item) => `${item.name} · ${item.id}`).join(", ")}</p> : <p>Support-модули не выбраны.</p>}
+    <ol>{result.steps.map((step) => <li key={step}>{step}</li>)}</ol>
+    {result.adjustments.length ? <><h3>Корректировки</h3><ul>{result.adjustments.map((item) => <li key={item}>{item}</li>)}</ul></> : null}
+    <h3>Рекомендации</h3>
+    <ul>{result.recommendations.map((item) => <li key={item.id}><strong>{item.title}</strong> <small>{item.id}</small></li>)}</ul>
+  </section>;
+}
+
+function PreviewDebugger({ calculation }: { calculation: PreviewCalculation }) {
+  const { explanation, debug } = calculation;
+  return <section className="admin-preview-debugger">
+    <header><p className="eyebrow">Фактический debug Rule Engine</p><h2>Почему такой результат?</h2></header>
+    <section className="admin-card"><h3>Ranking модулей</h3><ol className="admin-debug-ranking">{explanation.ranking.map((item) => <li key={item.moduleId}><div><strong>{item.name}</strong><small>{item.moduleId} · {item.role}</small></div><b>{item.score}</b><p>{item.reason}</p></li>)}</ol><p className="admin-hint">Support threshold: {explanation.supportThreshold} · максимум support: {explanation.maxSupportCount}</p></section>
+    <section className="admin-card"><h3>Score breakdown</h3><div className="admin-debug-grid">{explanation.scoreBreakdown.map((item) => <article key={item.moduleId}><h4>{item.name} <small>{item.moduleId}</small></h4>{item.contributions.length ? <ul>{item.contributions.map((entry, index) => <li key={`${entry.answerId}:${index}`}><span>{entry.answerText} <small>{entry.answerId}</small></span><b>{entry.weight >= 0 ? "+" : ""}{entry.weight}</b></li>)}</ul> : <p className="admin-hint">Нет score-вкладов.</p>}<strong>TOTAL = {item.total}</strong></article>)}</div></section>
+    <section className="admin-card"><h3>Tie-break</h3>{explanation.tieBreaks.length ? explanation.tieBreaks.map((tie) => <article className="admin-debug-block" key={`${tie.total}:${tie.moduleIds.join(":")}`}><p><strong>TOTAL equal: {tie.total}</strong> · {tie.moduleIds.join(" / ")}</p><ol>{tie.steps.map((step) => <li key={step.criterion}>{step.criterion}: {step.values.map((value) => `${value.moduleId}=${value.value}`).join(", ")}</li>)}</ol><p>Победитель: <strong>{tie.winnerModuleId}</strong>. Решающий этап: <strong>{tie.decidedBy}</strong>.</p></article>) : <p>Одинаковых TOTAL в текущем ranking нет.</p>}</section>
+    <div className="admin-grid">
+      <section className="admin-card"><h3>Guards и fallback</h3>{explanation.guards.map((guard) => <p key={guard.ruleId}><strong>{guard.moduleName} · {guard.moduleId}</strong><br />{guard.excluded ? "Исключён" : "Допущен"}: {guard.condition}</p>)}{explanation.fallback ? <div className="admin-debug-notice"><strong>Fallback сработал</strong><p>Обычный ranking не достиг threshold. Выбран {explanation.fallback.selectedModuleName} · {explanation.fallback.selectedModuleId}.</p><p>Условие: {explanation.fallback.condition}</p></div> : <p>Fallback не применялся.</p>}</section>
+      <section className="admin-card"><h3>Modifiers</h3>{explanation.modifiers.length ? explanation.modifiers.map((modifier) => <p key={modifier.id}><strong>{modifier.id}</strong> · {modifier.operationKind}<br />Цель: {modifier.targetModuleName}<br />Триггер: {modifier.triggerAnswers.map((answer) => `${answer.text} · ${answer.id}`).join(", ") || "системное условие"}<br />Изменение: {modifier.change}</p>) : <p>Модификаторы не применялись.</p>}</section>
+    </div>
+    <section className="admin-card"><h3>Q6 / Q7 / Q8 и предпринимательство</h3><div className="admin-debug-grid"><article><h4>Q6 · Приоритеты</h4>{explanation.selections.priorities.length ? explanation.selections.priorities.map((item) => <p key={item.id}>{item.text} <small>{item.id}</small></p>) : <p>Не выбраны.</p>}</article><article><h4>Q7 · Темп</h4>{explanation.selections.pace.answers.map((item) => <p key={item.id}>{item.text} <small>{item.id}</small></p>)}<p>{explanation.selections.pace.result?.text ?? "Темп не применён."}</p></article><article><h4>Q8 · Формат поддержки</h4>{explanation.selections.preferences.length ? explanation.selections.preferences.map((item) => <p key={item.id}>{item.text} <small>{item.id}</small></p>) : <p>Предпочтения не выбраны.</p>}</article><article><h4>Предпринимательство</h4><p>entrepreneur_signal: {explanation.entrepreneurship.active ? "да" : "нет"}</p><p>Стадия: {explanation.entrepreneurship.stage ? `${explanation.entrepreneurship.stage.focus} · ${explanation.entrepreneurship.stage.id}` : "—"}</p><p>Challenges: {explanation.entrepreneurship.challengeIds.join(", ") || "—"}</p>{explanation.entrepreneurship.ignoredAnswerIds.length ? <p>Игнорированы скрытые ответы: {explanation.entrepreneurship.ignoredAnswerIds.join(", ")}</p> : null}</article></div></section>
+    <section className="admin-card"><h3>Recommendations</h3><div className="admin-debug-grid">{explanation.recommendations.map((item) => <article key={item.id}><h4>{item.title}</h4><p><small>{item.id} · source: {item.source.toLowerCase()}</small></p><p>Модуль: {item.moduleName ?? "special"} · link priority: {item.linkPriority}</p><p>Q6 boost: {item.priorityTagBoost ? "да" : "нет"} · Q8 preference: {item.preferenceBoost ? "да" : "нет"}</p><p>Special boost: {item.challengeBoost ? "да" : "нет"} · Opportunity resolution: {item.opportunityResolved ? "да" : "нет"}</p></article>)}</div>{explanation.recommendationExclusions.length ? <details><summary>Не выбранные кандидаты</summary><ul>{explanation.recommendationExclusions.map((item) => <li key={item.id}>{item.title} · {item.id}: {item.reason}</li>)}</ul></details> : null}</section>
+    <details className="admin-card"><summary>Raw debug JSON</summary><pre>{JSON.stringify(debug, null, 2)}</pre></details>
+  </section>;
+}
+
 function Preview() {
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [result, setResult] = useState<Json | null>(null);
-  useEffect(() => { void fetch("/api/admin/draft").then((r) => r.json()).then(setDraft); }, []);
-  async function run(event: React.FormEvent<HTMLFormElement>) { event.preventDefault(); const ids = new FormData(event.currentTarget).getAll("answers"); const response = await fetch("/api/admin/preview", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ selectedAnswerIds: ids, educationLevel: "MASTER" }) }); setResult(await response.json()); }
-  if (!draft) return <p>Загрузка…</p>;
-  const answers = draft.snapshot.answers as Json[];
-  return <><header className="admin-heading"><div><p className="eyebrow">Тот же production engine · Магистратура</p><h1>Preview DRAFT</h1></div></header><form onSubmit={run} className="admin-card admin-preview-form">{(draft.snapshot.questions as Json[]).filter((question) => question.forMaster !== false).map((question) => <fieldset key={String(question.stableId)}><legend>{String(question.stableId)} · {String(question.text)}</legend>{answers.filter((a) => a.questionStableId === question.stableId).map((answer) => <label key={String(answer.stableId)}><input type={question.selectionType === "SINGLE" ? "radio" : "checkbox"} name="answers" value={String(answer.stableId)} /> {String(answer.text)}</label>)}</fieldset>)}<button className="button-primary">Рассчитать DRAFT</button></form>{result && <div className="admin-grid"><section className="admin-card"><h2>Public-style result</h2><pre>{JSON.stringify(result.result ?? result, null, 2)}</pre></section><section className="admin-card"><h2>Technical debug</h2><pre>{JSON.stringify(result.debug ?? result, null, 2)}</pre></section></div>}<section className="admin-card"><h2>E01–E07 — documentation only</h2><pre>{JSON.stringify(draft.snapshot.documentationExamples, null, 2)}</pre></section></>;
+  const [educationLevel, setEducationLevel] = useState<EducationLevel>("MASTER");
+  const [questionnaire, setQuestionnaire] = useState<PublicQuestionnaireDTO | null>(null);
+  const [availabilityMessage, setAvailabilityMessage] = useState("");
+  const [answers, setAnswers] = useState<PreviewAnswers>({});
+  const [calculation, setCalculation] = useState<PreviewCalculation | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [calculating, setCalculating] = useState(false);
+  const [message, setMessage] = useState("");
+
+  useEffect(() => {
+    const controller = new AbortController();
+    setLoading(true);
+    setQuestionnaire(null);
+    setAnswers({});
+    setCalculation(null);
+    setMessage("");
+    fetch(`/api/admin/preview?educationLevel=${educationLevel}`, { signal: controller.signal })
+      .then(async (response) => {
+        if (!response.ok) throw new Error("PREVIEW_QUESTIONNAIRE_UNAVAILABLE");
+        return response.json() as Promise<{ available: boolean; questionnaire: PublicQuestionnaireDTO | null; message: string | null }>;
+      })
+      .then((data) => {
+        setQuestionnaire(data.questionnaire);
+        setAvailabilityMessage(data.message ?? "");
+        setLoading(false);
+      })
+      .catch((error: unknown) => {
+        if (error instanceof DOMException && error.name === "AbortError") return;
+        setAvailabilityMessage("Не удалось загрузить DRAFT-анкету.");
+        setLoading(false);
+      });
+    return () => controller.abort();
+  }, [educationLevel]);
+
+  async function run(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!questionnaire || !canCalculatePreview(questionnaire, answers)) return;
+    setCalculating(true);
+    setMessage("");
+    setCalculation(null);
+    const response = await fetch("/api/admin/preview", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ selectedAnswerIds: selectedPreviewAnswerIds(questionnaire, answers), educationLevel }),
+    });
+    const body = await response.json() as PreviewCalculation & { error?: string };
+    if (!response.ok) setMessage(body.error === "MIN_SELECT" || body.error === "MAX_SELECT" ? "Проверьте количество ответов в вопросах." : "Не удалось рассчитать DRAFT. Проверьте заполнение анкеты.");
+    else setCalculation(body);
+    setCalculating(false);
+  }
+
+  const visibleQuestions = questionnaire ? visiblePreviewQuestions(questionnaire, answers) : [];
+  const valid = questionnaire ? canCalculatePreview(questionnaire, answers) : false;
+
+  return <>
+    <header className="admin-heading"><div><p className="eyebrow">Тот же production engine · DRAFT only</p><h1>Preview DRAFT</h1></div><span className="admin-status">Без session</span></header>
+    <section className="admin-card admin-preview-level"><h2>Уровень обучения</h2><label><input type="radio" name="preview-education" checked={educationLevel === "BACHELOR"} onChange={() => setEducationLevel("BACHELOR")} /> Бакалавриат</label><label><input type="radio" name="preview-education" checked={educationLevel === "MASTER"} onChange={() => setEducationLevel("MASTER")} /> Магистратура</label></section>
+    {loading ? <p>Загрузка анкеты…</p> : !questionnaire ? <section className="admin-card"><h2>Preview недоступен</h2><p>{availabilityMessage}</p></section> : <form onSubmit={run} className="admin-card admin-preview-form"><h2>Анкета DRAFT</h2>{visibleQuestions.map((question) => {
+      const selected = answers[question.id] ?? [];
+      return <fieldset key={question.id}><legend>{question.title} <small>{question.id}</small></legend><p className="admin-hint">{question.instruction}</p>{question.answers.map((answer) => {
+        const checked = selected.includes(answer.id);
+        const maxReached = question.type === "multi" && selected.length >= question.maxSelect && !checked;
+        return <label key={answer.id}><input type={question.type === "single" ? "radio" : "checkbox"} name={question.type === "single" ? previewRadioGroupName(question.id) : `${previewRadioGroupName(question.id)}-${answer.id}`} checked={checked} disabled={maxReached} onChange={() => setAnswers((current) => updatePreviewAnswer(questionnaire, current, question, answer.id))} /> <span>{answer.text} <small>{answer.id}</small></span></label>;
+      })}<small>Выбрано: {selected.length} · min {question.minSelect} · max {question.maxSelect}</small></fieldset>;
+    })}<button className="button-primary" disabled={!valid || calculating}>{calculating ? "Рассчитываем…" : "Рассчитать DRAFT"}</button>{!valid ? <p className="admin-hint">Заполните обязательные вопросы и соблюдайте min/max выбора.</p> : null}{message ? <p role="alert">{message}</p> : null}</form>}
+    {calculation ? <><PreviewResult calculation={calculation} /><PreviewDebugger calculation={calculation} /></> : null}
+  </>;
 }
 
 function Audit() {

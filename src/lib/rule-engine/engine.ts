@@ -230,7 +230,18 @@ function buildRecommendations(
     ranking: eligible.map((candidate) => candidate.id),
     selections: chosen.map((candidate) => ({
       id: candidate.publicRecommendation.id,
+      recommendationId: candidate.id,
       sourceModuleId: moduleOrder[candidate.sourceRank] ?? null,
+      source: candidate.sourceRank < 0
+        ? "SPECIAL" as const
+        : candidate.sourceRank === 0
+          ? "PRIMARY" as const
+          : "SUPPORT" as const,
+      linkPriority: candidate.priority,
+      challengeBoost: candidate.challengeBoost > 0,
+      preferenceBoost: candidate.preferenceBoost > 0,
+      priorityTagBoost: candidate.priorityBoost > 0,
+      opportunityResolved: candidate.publicRecommendation.id !== candidate.id,
     })),
   };
 }
@@ -267,6 +278,12 @@ export function calculateCareerTrajectoryDebug(
     throw new Error("RULE_ENGINE_CONFIG_ERROR unsupported_scoring_strategy");
   }
   const scores = Object.fromEntries(config.modules.map((module) => [module.stableId, 0]));
+  const scoreContributions: Array<{
+    moduleId: string;
+    questionId: string;
+    answerId: string;
+    weight: number;
+  }> = [];
   const questionSubtotals = Object.fromEntries(
     config.modules.map((module) => [module.stableId, {} as Record<string, number>]),
   );
@@ -276,6 +293,12 @@ export function calculateCareerTrajectoryDebug(
     const subtotal = questionSubtotals[mapping.moduleStableId];
     subtotal[mapping.questionStableId] =
       (subtotal[mapping.questionStableId] ?? 0) + mapping.weight;
+    scoreContributions.push({
+      moduleId: mapping.moduleStableId,
+      questionId: mapping.questionStableId,
+      answerId: mapping.answerStableId,
+      weight: mapping.weight,
+    });
   }
   if (overrides.rankingScores) {
     for (const [moduleId, values] of Object.entries(overrides.rankingScores)) {
@@ -316,14 +339,17 @@ export function calculateCareerTrajectoryDebug(
   const supportRule = requireRule(config, "SUPPORT_SELECTION");
   let primaryId = ranking[0];
   let fallbackReason: string | null = null;
+  let fallbackConditionIndex: number | null = null;
   if (!primaryId || (scores[primaryId] ?? 0) < supportRule.params.supportThreshold) {
     const fallback = requireRule(config, "FALLBACK_SELECTION");
-    const match = fallback.params.conditions.find((condition) =>
+    const matchIndex = fallback.params.conditions.findIndex((condition) =>
       conditionMatches(condition, selectedIdSet, selectedTags),
     );
+    const match = fallback.params.conditions[matchIndex];
     if (!match) throw new Error("RULE_ENGINE_CALCULATION_ERROR no_fallback_match");
     primaryId = match.moduleId;
     fallbackReason = "NO_ELIGIBLE_MODULE_AT_OR_ABOVE_THRESHOLD";
+    fallbackConditionIndex = matchIndex;
   }
   const primaryBase = moduleById.get(primaryId);
   if (!primaryBase) throw new Error(`RULE_ENGINE_CONFIG_ERROR module=${primaryId}`);
@@ -538,10 +564,35 @@ export function calculateCareerTrajectoryDebug(
     debug: {
       scores,
       questionSubtotals,
+      scoreContributions,
       ranking,
+      tieBreakQuestionIds: tieBreakQuestions,
       guardedModules,
       fallbackReason,
+      fallbackConditionIndex,
+      supportThreshold: supportRule.params.supportThreshold,
+      maxSupportCount: maxSupports,
+      primaryModuleId: primaryId,
+      supportModuleIds: supportIds,
       appliedModifierIds: [...new Set(appliedModifierIds)],
+      modifierApplications: [...new Set(appliedModifierIds)].map((id) => {
+        const modifier = config.modifiers.find((candidate) => candidate.stableId === id)!;
+        return {
+          id,
+          targetModuleId: modifier.targetModuleStableId,
+          operationKind: modifier.operation.operationKind,
+          triggerAnswerIds: selected
+            .filter((answer) => triggerMatches(
+              modifier.triggerAnswerPattern,
+              modifier.triggerTag,
+              new Set([answer.stableId]),
+              new Set(answer.tags),
+            ))
+            .map((answer) => answer.stableId),
+        };
+      }),
+      selectedAnswerIds: [...selectedIdSet],
+      entrepreneurBranchActive: activeBranch,
       recommendationRanking: recommendationResult.ranking,
       ignoredAnswerIds,
       entrepreneurChallengeIds,
