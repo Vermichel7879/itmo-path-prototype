@@ -26,7 +26,9 @@ export interface PublicQuestionnaireDTO {
   questions: PublicQuestionnaireQuestion[];
 }
 
-function instructionFor(question: CareerImport["questions"][number]) {
+export function questionnaireInstruction(
+  question: Pick<CareerImport["questions"][number], "selectionType" | "required" | "minSelect" | "maxSelect">,
+) {
   if (question.selectionType === "SINGLE") return "Выберите один вариант";
   if (!question.required && question.minSelect === 0) {
     return `Можно пропустить или выбрать до ${question.maxSelect} вариантов`;
@@ -62,7 +64,7 @@ export function buildPublicQuestionnaireDTO(
         id: question.stableId,
         block: question.block,
         title: question.text,
-        instruction: instructionFor(question),
+        instruction: questionnaireInstruction(question),
         type: question.selectionType === "SINGLE" ? "single" : "multi",
         minSelect: question.minSelect,
         maxSelect: question.maxSelect,

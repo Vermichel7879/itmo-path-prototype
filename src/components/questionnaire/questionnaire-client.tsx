@@ -1,17 +1,30 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useCareerJourney } from "@/components/journey/career-journey-provider";
+import { LandingPage } from "@/components/landing/landing-page";
 import { SiteHeader } from "@/components/ui/site-header";
 import { Toast } from "@/components/ui/toast";
 import type { PublicQuestionnaireDTO } from "@/lib/public-config/questionnaire";
 import { canContinue, toggleQuestionAnswer } from "@/lib/questionnaire/answers";
+import type { EducationLevel } from "@/lib/career/audience";
+import {
+  publicEntryPath,
+  trajectorySessionStartPayload,
+  unavailableQuestionnaireMessage,
+} from "@/lib/public-flow/entry";
 import type { TrajectoryResult } from "@/lib/rule-engine/types";
 import { AnswerCards } from "./answer-cards";
 import { QuestionnaireProgress } from "./questionnaire-progress";
 
-export function QuestionnaireClient({ initialConfigVersionId }: { initialConfigVersionId: string | null }) {
+export function QuestionnaireClient({
+  initialConfigVersionId,
+  educationLevel,
+}: {
+  initialConfigVersionId: string | null;
+  educationLevel: EducationLevel;
+}) {
   const router = useRouter();
   const journey = useCareerJourney();
   const { initializeVersion, currentQuestionId, setCurrentQuestionId } = journey;
@@ -22,13 +35,25 @@ export function QuestionnaireClient({ initialConfigVersionId }: { initialConfigV
   const [showEntrepreneurToast, setShowEntrepreneurToast] = useState(false);
   const [startError, setStartError] = useState(false);
   const [starting, setStarting] = useState(false);
+  const startRequestInFlight = useRef(false);
   const [saving, setSaving] = useState(false);
+  const entryPath = publicEntryPath(educationLevel);
 
   useEffect(() => {
     if (journey.hydrated && initialConfigVersionId && !journey.configVersionId) {
       initializeVersion(initialConfigVersionId);
     }
   }, [initialConfigVersionId, initializeVersion, journey.configVersionId, journey.hydrated]);
+
+  useEffect(() => {
+    if (
+      journey.hydrated &&
+      journey.educationLevel &&
+      journey.educationLevel !== educationLevel
+    ) {
+      journey.resetJourney();
+    }
+  }, [educationLevel, journey]);
 
   useEffect(() => {
     if (!journey.sessionId || journey.sessionStatus !== "IN_PROGRESS") return;
@@ -43,17 +68,18 @@ export function QuestionnaireClient({ initialConfigVersionId }: { initialConfigV
       .then((dto) => {
         initializeVersion(dto.configVersionId);
         setQuestionnaire(dto);
-        if (!initialConfigVersionId) router.replace(`/questionnaire?configVersionId=${encodeURIComponent(dto.configVersionId)}`);
+        if (!initialConfigVersionId) router.replace(`${entryPath}?configVersionId=${encodeURIComponent(dto.configVersionId)}`);
       })
       .catch((error: unknown) => {
         if (!(error instanceof DOMException && error.name === "AbortError")) setLoadError(true);
       });
     return () => controller.abort();
-  }, [initialConfigVersionId, initializeVersion, journey.sessionId, journey.sessionStatus, router]);
+  }, [entryPath, initialConfigVersionId, initializeVersion, journey.sessionId, journey.sessionStatus, router]);
 
   async function startJourney(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    if (starting) return;
+    if (startRequestInFlight.current) return;
+    startRequestInFlight.current = true;
     setStarting(true);
     setStartError(false);
     const form = new FormData(event.currentTarget);
@@ -61,12 +87,14 @@ export function QuestionnaireClient({ initialConfigVersionId }: { initialConfigV
       const response = await fetch("/api/trajectory-sessions", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ isu: form.get("isu"), educationLevel: form.get("educationLevel") }),
+        body: JSON.stringify(trajectorySessionStartPayload(form.get("isu"), educationLevel)),
       });
       if (!response.ok) throw new Error("SESSION_START_UNAVAILABLE");
       journey.initializeSession(await response.json());
     } catch {
       setStartError(true);
+    } finally {
+      startRequestInFlight.current = false;
       setStarting(false);
     }
   }
@@ -142,8 +170,8 @@ export function QuestionnaireClient({ initialConfigVersionId }: { initialConfigV
     } else await submitTrajectory();
   }
 
-  if (journey.hydrated && !journey.sessionId) return <div className="public-shell questionnaire-page"><SiteHeader /><main className="questionnaire-main page-enter"><section className="question-sheet"><form className="question-sheet__content" onSubmit={startJourney}><p className="questionnaire-heading__block">Перед началом</p><h1>Начнём с пары данных</h1><label>Номер ИСУ<input name="isu" inputMode="numeric" pattern="[0-9]+" required autoComplete="off" /></label><p className="question-sheet__instruction">Номер ИСУ используется для анализа прохождений и не влияет на результат траектории.</p><fieldset><legend>Уровень обучения</legend><label><input type="radio" name="educationLevel" value="BACHELOR" required /> Бакалавриат</label><label><input type="radio" name="educationLevel" value="MASTER" required /> Магистратура</label></fieldset>{startError ? <p role="alert">Не удалось начать прохождение. Попробуйте ещё раз.</p> : null}<button className="button-primary" disabled={starting}>{starting ? "Начинаем…" : "Начать →"}</button></form></section></main></div>;
-  if (journey.hydrated && journey.sessionStatus === "UNAVAILABLE") return <div className="public-shell questionnaire-page"><SiteHeader /><main className="questionnaire-main page-enter"><section className="question-sheet"><div className="question-sheet__content"><h1>Анкета для бакалавриата пока не настроена.</h1><button type="button" className="button-secondary" onClick={journey.resetJourney}>Изменить уровень обучения</button></div></section></main></div>;
+  if (journey.hydrated && !journey.sessionId) return <LandingPage onStart={startJourney} starting={starting} startError={startError} />;
+  if (journey.hydrated && journey.sessionStatus === "UNAVAILABLE") return <div className="public-shell questionnaire-page"><SiteHeader /><main className="questionnaire-main page-enter"><section className="question-sheet"><div className="question-sheet__content"><h1>{unavailableQuestionnaireMessage(educationLevel)}</h1><button type="button" className="button-secondary" onClick={journey.resetJourney}>Попробовать снова</button></div></section></main></div>;
   if (journey.hydrated && journey.sessionStatus === "COMPLETED") return <div className="public-shell questionnaire-page"><SiteHeader /><main className="questionnaire-main page-enter"><section className="question-sheet"><div className="question-sheet__content"><h1>Это прохождение уже завершено.</h1><button type="button" className="button-primary" onClick={journey.resetJourney}>Начать новое прохождение</button></div></section></main></div>;
 
   if (loadError) return <main className="public-shell route-status"><p>Карьерная траектория временно недоступна.</p></main>;
@@ -175,7 +203,7 @@ export function QuestionnaireClient({ initialConfigVersionId }: { initialConfigV
       </main>
       <nav className="question-nav" aria-label="Навигация по анкете">
         <div className="question-nav__inner">
-          <button type="button" onClick={() => currentIndex === 0 ? router.push("/") : journey.setCurrentQuestionId(sequence[currentIndex - 1].id)} className="button-secondary"><span aria-hidden="true">←</span> Назад</button>
+          <button type="button" onClick={() => currentIndex === 0 ? router.push(entryPath) : journey.setCurrentQuestionId(sequence[currentIndex - 1].id)} className="button-secondary"><span aria-hidden="true">←</span> Назад</button>
           <p className="question-nav__hint">Ответ сохраняется автоматически</p>
           <button type="button" onClick={() => void handleContinue()} disabled={!allowContinue || submitting || saving} className="button-primary">{saving ? "Сохраняем…" : buttonLabel}</button>
         </div>

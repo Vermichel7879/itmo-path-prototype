@@ -6,6 +6,7 @@ import { useCareerJourney } from "@/components/journey/career-journey-provider";
 import { SiteHeader } from "@/components/ui/site-header";
 import { Toast } from "@/components/ui/toast";
 import type { TrajectoryResult } from "@/lib/rule-engine/types";
+import { publicEntryPath } from "@/lib/public-flow/entry";
 import { RecommendationCards } from "./recommendation-cards";
 import { SupportModules } from "./support-modules";
 import { TrajectoryTimeline } from "./trajectory-timeline";
@@ -18,16 +19,17 @@ export function ResultClient({ configVersionId }: { configVersionId: string | nu
   const requestedVersion = useRef<string | null>(null);
   const { initializeVersion, setTrajectoryResult } = journey;
   const dismissPdfToast = useCallback(() => setPdfState("idle"), []);
+  const entryPath = publicEntryPath(journey.educationLevel ?? "MASTER");
 
   useEffect(() => {
-    if (!configVersionId) router.replace("/questionnaire");
+    if (!configVersionId) router.replace(entryPath);
     else initializeVersion(configVersionId);
-  }, [configVersionId, initializeVersion, router]);
+  }, [configVersionId, entryPath, initializeVersion, router]);
 
   useEffect(() => {
     if (!journey.hydrated || !configVersionId || journey.configVersionId !== configVersionId) return;
     if (!journey.answers.Q1?.length) {
-      router.replace("/questionnaire");
+      router.replace(entryPath);
       return;
     }
     if (journey.result?.configVersionId === configVersionId || requestedVersion.current === configVersionId) return;
@@ -44,11 +46,11 @@ export function ResultClient({ configVersionId }: { configVersionId: string | nu
       .then((result) => setTrajectoryResult(result))
       .catch(() => setLoadError(true))
       .finally(() => { requestedVersion.current = null; });
-  }, [configVersionId, journey.answers, journey.configVersionId, journey.hydrated, journey.result, journey.sessionId, router, setTrajectoryResult]);
+  }, [configVersionId, entryPath, journey.answers, journey.configVersionId, journey.hydrated, journey.result, journey.sessionId, router, setTrajectoryResult]);
 
   function restart() {
     journey.resetJourney();
-    router.push("/");
+    router.push(entryPath);
   }
 
   const result = journey.result?.configVersionId === configVersionId ? journey.result : null;
@@ -76,7 +78,7 @@ export function ResultClient({ configVersionId }: { configVersionId: string | nu
     }
   }
 
-  if (loadError) return <main className="public-shell route-status"><div><p>Не удалось открыть результат.</p><button type="button" className="button-secondary" onClick={() => router.replace("/questionnaire")}>Вернуться к анкете</button></div></main>;
+  if (loadError) return <main className="public-shell route-status"><div><p>Не удалось открыть результат.</p><button type="button" className="button-secondary" onClick={() => router.replace(entryPath)}>Вернуться к анкете</button></div></main>;
   if (!journey.hydrated || !result) return <main className="public-shell route-status"><p>Открываем результат…</p></main>;
 
   return (

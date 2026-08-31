@@ -25,4 +25,11 @@ describe("public trajectory flow architecture", () => {
     expect(route).toContain("trajectoryDataApi.complete");
     expect(route).toContain("buildTrajectoryCompletionPayload");
   });
+
+  it("reads the exact pinned engine configuration through Data API", () => {
+    const route = readFileSync(resolve("src/app/api/trajectory/route.ts"), "utf8");
+    expect(route).toContain("getPinnedEngineConfig(session.configVersionId)");
+    expect(route).not.toContain("getPublishedCareerConfigById");
+    expect(route).toContain("validatePinnedEngineConfig");
+  });
 });

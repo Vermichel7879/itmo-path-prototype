@@ -1308,9 +1308,42 @@ summary {
   color: #464a50;
 }
 
+.landing-start {
+  max-width: 31rem;
+  margin-top: 2rem;
+}
+
+.landing-start__field {
+  display: grid;
+  gap: 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 650;
+}
+
+.landing-start__field input {
+  width: 100%;
+  border: 1px solid var(--route-ink);
+  border-radius: 0;
+  background: #fff;
+  padding: 0.85rem 1rem;
+  font: inherit;
+  font-size: 1rem;
+}
+
+.landing-start__field input:focus-visible {
+  outline: 3px solid var(--route-blue);
+  outline-offset: 2px;
+}
+
+.landing-start__error {
+  margin: 0.75rem 0 0;
+  font-size: 0.82rem;
+  color: #b42318;
+}
+
 .landing-hero__action {
   display: flex;
-  margin-top: 2rem;
+  margin-top: 1rem;
   align-items: center;
   gap: 1.5rem;
 }
@@ -1892,6 +1925,14 @@ summary {
 }
 
 .recommendation-list {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.recommendation-list--2 {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.recommendation-list--3 {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
@@ -2003,9 +2044,28 @@ summary {
   color: var(--route-muted);
 }
 
+.recommendation-card__type {
+  font-size: 0.74rem !important;
+}
+
+.recommendation-card__details {
+  display: grid;
+  gap: 0.75rem;
+  margin: 0.85rem 0 0 2.15rem;
+  border-top: 1px solid var(--route-line);
+  padding-top: 0.85rem;
+}
+
+.recommendation-card__details p {
+  margin: 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: var(--route-muted);
+}
+
 .recommendation-card__link {
   display: inline-block;
-  margin: 0.8rem 0 0 2.15rem;
+  margin: 0;
   font-size: 0.84rem;
   color: var(--route-blue);
   font-weight: 650;
@@ -2372,6 +2432,10 @@ summary {
   }
 
   .recommendation-card__link {
+    margin-left: 0;
+  }
+
+  .recommendation-card__details {
     margin-left: 3.5rem;
   }
 

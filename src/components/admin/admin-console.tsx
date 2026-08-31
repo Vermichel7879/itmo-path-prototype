@@ -7,6 +7,7 @@ import type { AdminPreviewExplanation } from "@/lib/admin/preview-debug";
 import type { EducationLevel } from "@/lib/career/audience";
 import type { PublicQuestionnaireDTO } from "@/lib/public-config/questionnaire";
 import type { TrajectoryDebug, TrajectoryResult } from "@/lib/rule-engine/types";
+import { fetchAdminDraft, type AdminDraftPayload } from "./draft-client";
 import { patchRelationUpdate } from "./relation-update";
 import {
   canCalculatePreview,
@@ -26,7 +27,7 @@ import {
 } from "./relation-map";
 
 type Json = Record<string, unknown>;
-type Draft = { id: string; updatedAt: string; snapshot: Json; validation: { valid: boolean; issues: Json[] } };
+type Draft = AdminDraftPayload;
 
 function RelationNumberControl({
   label,
@@ -678,13 +679,22 @@ function CreateEntityForm({ entityType, draft, onCreated }: { entityType: string
 function EntitySection({ section, role }: { section: string; role: "ADMIN" | "EDITOR" }) {
   const config = sectionConfig[section];
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [draftError, setDraftError] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [message, setMessage] = useState("");
-  async function load() { setDraft(await fetch("/api/admin/draft").then((r) => r.json())); }
+  async function load() {
+    setDraftError(false);
+    try {
+      setDraft(await fetchAdminDraft());
+    } catch {
+      setDraft(null);
+      setDraftError(true);
+    }
+  }
   useEffect(() => {
-    void fetch("/api/admin/draft").then((response) => response.json()).then(setDraft);
+    void load();
   }, [section]);
-  const items = useMemo(() => (draft?.snapshot[config.key] as Json[] | undefined) ?? [], [draft, config.key]);
+  const items = useMemo(() => (draft?.snapshot?.[config.key] as Json[] | undefined) ?? [], [draft, config.key]);
   const structuralCounters = useMemo(() => buildStructuralCounters(draft?.snapshot ?? {}), [draft]);
   const raw = items[selectedIndex] ?? items[0];
   const item = raw ? normalizeItem(config.entityType, raw) : null;
@@ -747,6 +757,7 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
     if (response.ok) await load();
   }
 
+  if (draftError) return <div role="alert"><p>Не удалось загрузить DRAFT. Попробуйте ещё раз.</p><button type="button" className="button-secondary" onClick={() => void load()}>Повторить</button></div>;
   if (!draft) return <p>Загрузка…</p>;
   const hasAudience = ["QUESTION", "MODULE", "RECOMMENDATION"].includes(config.entityType);
   const editorKey = item
@@ -847,9 +858,12 @@ function RelationEntitySummary({ entity, focused = false }: { entity: RelationEn
 
 function RelationMap() {
   const [draft, setDraft] = useState<Draft | null>(null);
+  const [draftError, setDraftError] = useState(false);
   const [query, setQuery] = useState("");
   const [focusKey, setFocusKey] = useState("");
-  useEffect(() => { void fetch("/api/admin/draft").then((response) => response.json()).then(setDraft); }, []);
+  useEffect(() => {
+    void fetchAdminDraft().then(setDraft).catch(() => setDraftError(true));
+  }, []);
 
   const options = useMemo(() => draft ? buildRelationFocusOptions(draft.snapshot) : [], [draft]);
   const counters = useMemo(() => draft ? buildStructuralCounters(draft.snapshot) : null, [draft]);
@@ -859,6 +873,7 @@ function RelationMap() {
   const filteredOptions = options.filter((option) => !normalizedQuery || `${relationKindLabels[option.kind]} ${option.stableId} ${option.label}`.toLocaleLowerCase("ru").includes(normalizedQuery));
   const answerIds = new Set(model?.answers.map((answer) => answer.stableId) ?? []);
 
+  if (draftError) return <p role="alert">Не удалось загрузить DRAFT. Обновите страницу.</p>;
   if (!draft || !counters) return <p>Загрузка…</p>;
 
   return <>
@@ -1030,7 +1045,11 @@ function Audit() {
 
 function Validation() {
   const [draft, setDraft] = useState<Draft | null>(null);
-  useEffect(() => { void fetch("/api/admin/draft").then((response) => response.json()).then(setDraft); }, []);
+  const [draftError, setDraftError] = useState(false);
+  useEffect(() => {
+    void fetchAdminDraft().then(setDraft).catch(() => setDraftError(true));
+  }, []);
+  if (draftError) return <p role="alert">Не удалось загрузить DRAFT. Обновите страницу.</p>;
   if (!draft) return <p>Загрузка…</p>;
   const errors = draft.validation.issues.filter((issue) => issue.severity === "ERROR");
   const warnings = draft.validation.issues.filter((issue) => issue.severity === "WARNING");
