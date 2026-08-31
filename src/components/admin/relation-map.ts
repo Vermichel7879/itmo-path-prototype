@@ -36,6 +36,34 @@ export type RelationMapModel = {
   modules: RelationModule[];
 };
 
+export type RelationGraphAudience = "ALL" | "MASTER" | "BACHELOR";
+
+export type RelationGraphNode = RelationEntity & {
+  key: string;
+  x: number;
+  y: number;
+};
+
+export type RelationGraphEdge = {
+  key: string;
+  source: string;
+  target: string;
+  kind: "QUESTION_ANSWER" | "ANSWER_MODULE" | "MODULE_RECOMMENDATION";
+  label?: string;
+};
+
+export type RelationGraphModel = {
+  nodes: RelationGraphNode[];
+  edges: RelationGraphEdge[];
+  width: number;
+  height: number;
+};
+
+export type RelationGraphFilters = {
+  audience?: RelationGraphAudience;
+  focus: RelationFocus & { kind: "QUESTION" | "MODULE" };
+};
+
 export type StructuralCounters = {
   questions: Record<string, { answers: number; mappings: number }>;
   answers: Record<string, { modules: number }>;
@@ -119,6 +147,135 @@ export function buildRelationFocusOptions(snapshot: RelationSnapshot): RelationE
     ...list(snapshot, "modules").map((item) => entity("MODULE", item)),
     ...list(snapshot, "recommendations").map((item) => entity("RECOMMENDATION", item)),
   ];
+}
+
+const graphColumns: RelationEntityKind[] = [
+  "QUESTION",
+  "ANSWER",
+  "MODULE",
+  "RECOMMENDATION",
+];
+
+function entityKey(kind: RelationEntityKind, stableId: string) {
+  return `${kind}:${stableId}`;
+}
+
+function matchesGraphAudience(item: RelationEntity, filter: RelationGraphAudience) {
+  if (filter === "ALL") return true;
+  return filter === "MASTER" ? item.audience.includes("MA") : item.audience.includes("BA");
+}
+
+export function filterRelationGraphFocusOptions(
+  snapshot: RelationSnapshot,
+  input: {
+    kind: "QUESTION" | "MODULE";
+    audience?: RelationGraphAudience;
+    query?: string;
+  },
+) {
+  const audienceFilter = input.audience ?? "ALL";
+  const query = input.query?.trim().toLocaleLowerCase("ru") ?? "";
+  return buildRelationFocusOptions(snapshot).filter(
+    (item): item is RelationEntity & { kind: "QUESTION" | "MODULE" } =>
+      item.kind === input.kind &&
+      matchesGraphAudience(item, audienceFilter) &&
+      (!query || `${item.stableId} ${item.label}`.toLocaleLowerCase("ru").includes(query)),
+  );
+}
+
+export function buildRelationGraphModel(
+  snapshot: RelationSnapshot,
+  filters: RelationGraphFilters,
+): RelationGraphModel {
+  const answers = list(snapshot, "answers");
+  const entities = buildRelationFocusOptions(snapshot);
+  const entityByKey = new Map(
+    entities.map((item) => [entityKey(item.kind, item.stableId), item]),
+  );
+  const rawEdges: RelationGraphEdge[] = [
+    ...answers.map((answer) => ({
+      key: `qa:${String(answer.questionStableId)}:${String(answer.stableId)}`,
+      source: entityKey("QUESTION", String(answer.questionStableId)),
+      target: entityKey("ANSWER", String(answer.stableId)),
+      kind: "QUESTION_ANSWER" as const,
+    })),
+    ...list(snapshot, "mappings").map((mapping) => ({
+      key: `am:${String(mapping.answerStableId)}:${String(mapping.moduleStableId)}`,
+      source: entityKey("ANSWER", String(mapping.answerStableId)),
+      target: entityKey("MODULE", String(mapping.moduleStableId)),
+      kind: "ANSWER_MODULE" as const,
+      label: `weight ${String(mapping.weight)}`,
+    })),
+    ...list(snapshot, "moduleRecommendations").map((link) => ({
+      key: `mr:${String(link.moduleStableId)}:${String(link.recommendationStableId)}`,
+      source: entityKey("MODULE", String(link.moduleStableId)),
+      target: entityKey("RECOMMENDATION", String(link.recommendationStableId)),
+      kind: "MODULE_RECOMMENDATION" as const,
+      label: `priority ${String(link.priority)}`,
+    })),
+  ].filter((edge) => entityByKey.has(edge.source) && entityByKey.has(edge.target));
+
+  const audience = filters.audience ?? "ALL";
+  let included = new Set(
+    entities
+      .filter((item) => matchesGraphAudience(item, audience))
+      .map((item) => entityKey(item.kind, item.stableId)),
+  );
+
+  const focusKey = entityKey(filters.focus.kind, filters.focus.stableId);
+  const focused = new Set<string>([focusKey]);
+  if (filters.focus.kind === "QUESTION") {
+    rawEdges
+      .filter((edge) => edge.kind === "QUESTION_ANSWER" && edge.source === focusKey)
+      .forEach((edge) => focused.add(edge.target));
+    rawEdges
+      .filter((edge) => edge.kind === "ANSWER_MODULE" && focused.has(edge.source))
+      .forEach((edge) => focused.add(edge.target));
+    rawEdges
+      .filter((edge) => edge.kind === "MODULE_RECOMMENDATION" && focused.has(edge.source))
+      .forEach((edge) => focused.add(edge.target));
+  } else {
+    rawEdges
+      .filter((edge) => edge.kind === "ANSWER_MODULE" && edge.target === focusKey)
+      .forEach((edge) => focused.add(edge.source));
+    rawEdges
+      .filter((edge) => edge.kind === "QUESTION_ANSWER" && focused.has(edge.target))
+      .forEach((edge) => focused.add(edge.source));
+    rawEdges
+      .filter((edge) => edge.kind === "MODULE_RECOMMENDATION" && edge.source === focusKey)
+      .forEach((edge) => focused.add(edge.target));
+  }
+  included = new Set([...included].filter((key) => focused.has(key)));
+
+  const edges = rawEdges.filter(
+    (edge) => included.has(edge.source) && included.has(edge.target),
+  );
+  const nodeWidth = 240;
+  const nodeHeight = 86;
+  const columnGap = 110;
+  const rowGap = 22;
+  const padding = 36;
+  const nodes: RelationGraphNode[] = [];
+  graphColumns.forEach((kind, columnIndex) => {
+    entities
+      .filter((item) => item.kind === kind && included.has(entityKey(kind, item.stableId)))
+      .forEach((item, rowIndex) => nodes.push({
+        ...item,
+        key: entityKey(kind, item.stableId),
+        x: padding + columnIndex * (nodeWidth + columnGap),
+        y: padding + rowIndex * (nodeHeight + rowGap),
+      }));
+  });
+  const tallestColumn = Math.max(
+    1,
+    ...graphColumns.map((kind) => nodes.filter((node) => node.kind === kind).length),
+  );
+  return {
+    nodes,
+    edges,
+    width: padding * 2 + graphColumns.length * nodeWidth + (graphColumns.length - 1) * columnGap,
+    height: padding * 2 + tallestColumn * nodeHeight + (tallestColumn - 1) * rowGap,
+  };
 }
 
 export function buildRelationMapModel(snapshot: RelationSnapshot, selected: RelationFocus): RelationMapModel | null {

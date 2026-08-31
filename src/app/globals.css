@@ -985,6 +985,300 @@ summary {
   color: #8c2f2f;
 }
 
+.admin-relation-modes {
+  display: inline-flex;
+  gap: 0.25rem;
+  margin: 0.75rem 0 1rem;
+  border: 1px solid #ccd1d9;
+  border-radius: 0.7rem;
+  background: #f2f4f7;
+  padding: 0.25rem;
+}
+
+.admin-relation-modes button,
+.admin-graph-zoom button {
+  border: 0;
+  border-radius: 0.45rem;
+  background: transparent;
+  padding: 0.55rem 0.85rem;
+  color: #34363a;
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.admin-relation-modes button.active,
+.admin-graph-zoom button:hover {
+  background: white;
+  color: #0b68ff;
+}
+
+.admin-graph {
+  display: grid;
+  gap: 0.75rem;
+}
+
+.admin-graph-scope {
+  display: inline-flex;
+  width: fit-content;
+  gap: 0.25rem;
+  border-bottom: 1px solid #ccd1d9;
+}
+
+.admin-graph-scope button {
+  border: 0;
+  border-bottom: 3px solid transparent;
+  background: transparent;
+  padding: 0.6rem 0.9rem;
+  color: #656970;
+  font: inherit;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.admin-graph-scope button.active {
+  border-bottom-color: #0b68ff;
+  color: #0b68ff;
+}
+
+.admin-graph-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.35fr) minmax(260px, 0.8fr) auto;
+  gap: 0.75rem;
+  align-items: end;
+}
+
+.admin-graph-controls label {
+  display: grid;
+  gap: 0.35rem;
+  color: #4c5057;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-graph-controls input,
+.admin-graph-controls select {
+  width: 100%;
+  min-width: 0;
+  border: 1px solid #ccd1d9;
+  border-radius: 0.55rem;
+  background: white;
+  padding: 0.68rem 0.75rem;
+  color: #17191c;
+  font: inherit;
+}
+
+.admin-graph-zoom {
+  display: flex;
+  align-items: center;
+  min-height: 42px;
+  border: 1px solid #ccd1d9;
+  border-radius: 0.55rem;
+  background: #f2f4f7;
+  overflow: hidden;
+}
+
+.admin-graph-zoom output {
+  min-width: 3.5rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.admin-graph-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1rem;
+  color: #656970;
+  font-size: 0.78rem;
+}
+
+.admin-graph-viewport {
+  position: relative;
+  height: min(68vh, 720px);
+  min-height: 520px;
+  border: 1px solid #ccd1d9;
+  border-radius: 0.75rem;
+  background-color: #f7f8fa;
+  background-image: radial-gradient(#d6dae0 0.8px, transparent 0.8px);
+  background-size: 18px 18px;
+  overflow: hidden;
+}
+
+.admin-graph-viewport svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+}
+
+.admin-graph-viewport svg:active {
+  cursor: grabbing;
+}
+
+.admin-graph-edge path {
+  fill: none;
+  stroke: #aeb5bf;
+  stroke-width: 1.5;
+}
+
+.admin-graph-edge marker path {
+  fill: #aeb5bf;
+}
+
+.admin-graph-edge text {
+  paint-order: stroke;
+  fill: #4d535b;
+  stroke: #f7f8fa;
+  stroke-width: 5px;
+  stroke-linejoin: round;
+  font-size: 11px;
+  font-weight: 750;
+  text-anchor: middle;
+}
+
+.admin-graph-edge-badge {
+  fill: white;
+  stroke: #c8cdd5;
+  stroke-width: 1;
+}
+
+.admin-graph-edge.is-selected .admin-graph-edge-badge {
+  fill: #edf5ff;
+  stroke: #0b68ff;
+}
+
+.admin-graph-edge.is-selected path {
+  stroke: #0b68ff;
+  stroke-width: 3;
+}
+
+.admin-graph-node {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.15rem 0.5rem;
+  width: 100%;
+  height: 100%;
+  border: 1px solid #c7ccd4;
+  border-left: 5px solid #737b86;
+  border-radius: 0.55rem;
+  background: white;
+  padding: 0.55rem 0.65rem;
+  color: #17191c;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.admin-graph-node small {
+  color: #737982;
+  font-size: 0.62rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.admin-graph-node strong {
+  justify-self: end;
+  font-size: 0.74rem;
+}
+
+.admin-graph-node span {
+  grid-column: 1 / -1;
+  display: -webkit-box;
+  overflow: hidden;
+  font-size: 0.76rem;
+  font-weight: 650;
+  line-height: 1.25;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.admin-graph-node em {
+  grid-column: 1 / -1;
+  color: #777d86;
+  font-size: 0.62rem;
+  font-style: normal;
+}
+
+.admin-graph-node--question { border-left-color: #0b68ff; background: #edf5ff; }
+.admin-graph-node--answer { border-left-color: #7868d8; background: #f5f2ff; }
+.admin-graph-node--module { border-left-color: #16845b; background: #effaf5; }
+.admin-graph-node--recommendation { border-left-color: #d17316; background: #fff6eb; }
+.admin-graph-node.is-inactive { filter: grayscale(0.7); opacity: 0.52; }
+.admin-graph-node.is-related { border-color: #0b68ff; }
+.admin-graph-node.is-focus { box-shadow: 0 0 0 4px rgb(11 104 255 / 18%); }
+.admin-graph-node.is-selected { outline: 3px solid #0b68ff; outline-offset: 2px; }
+.admin-graph-node.is-dimmed { opacity: 0.2; }
+
+.admin-graph-detail {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.8fr) minmax(220px, 0.7fr) minmax(300px, 1.5fr);
+  gap: 1rem;
+  border: 1px solid #ccd1d9;
+  border-radius: 0.7rem;
+  background: white;
+  padding: 1rem;
+}
+
+.admin-graph-detail h2,
+.admin-graph-detail p,
+.admin-graph-detail dl {
+  margin: 0;
+}
+
+.admin-graph-detail dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem;
+}
+
+.admin-graph-detail dl div {
+  border-left: 2px solid #d5d9df;
+  padding-left: 0.55rem;
+}
+
+.admin-graph-detail dt {
+  color: #737982;
+  font-size: 0.68rem;
+}
+
+.admin-graph-detail dd {
+  margin: 0.15rem 0 0;
+  font-weight: 700;
+}
+
+.admin-graph-detail ul {
+  display: grid;
+  gap: 0.4rem;
+  max-height: 150px;
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  list-style: none;
+}
+
+.admin-graph-detail li {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.75rem;
+  border-bottom: 1px solid #e4e7eb;
+  padding-bottom: 0.35rem;
+  font-size: 0.76rem;
+}
+
+.admin-graph-empty {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  z-index: 1;
+  margin: 0;
+  transform: translate(-50%, -50%);
+  color: #656970;
+}
+
 .admin-preview-form,
 .admin-preview-form fieldset {
   display: grid;
@@ -1110,6 +1404,13 @@ summary {
   .admin-relation-layout,
   .admin-relation-module {
     grid-template-columns: 1fr;
+  }
+  .admin-graph-controls,
+  .admin-graph-detail {
+    grid-template-columns: 1fr;
+  }
+  .admin-graph-viewport {
+    min-height: 480px;
   }
   .admin-mapping-link__controls,
   .admin-mapping-create {

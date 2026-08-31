@@ -7,7 +7,9 @@ import type { AdminPreviewExplanation } from "@/lib/admin/preview-debug";
 import type { EducationLevel } from "@/lib/career/audience";
 import type { PublicQuestionnaireDTO } from "@/lib/public-config/questionnaire";
 import type { TrajectoryDebug, TrajectoryResult } from "@/lib/rule-engine/types";
+import { fetchAdminDashboard, type AdminDashboardPayload } from "./dashboard-client";
 import { fetchAdminDraft, type AdminDraftPayload } from "./draft-client";
+import { RelationGraph } from "./relation-graph";
 import { patchRelationUpdate } from "./relation-update";
 import {
   canCalculatePreview,
@@ -95,13 +97,26 @@ const sectionConfig: Record<string, { key: string; title: string; entityType: st
 };
 
 function AdminDashboard() {
-  const [data, setData] = useState<Json | null>(null);
-  useEffect(() => { void fetch("/api/admin/dashboard").then((r) => r.json()).then(setData); }, []);
-  if (!data) return <p>Загрузка…</p>;
-  const counts = data.counts as Json;
-  const draft = data.draft as Json;
-  const published = data.published as Json;
-  return <><header className="admin-heading"><div><p className="eyebrow">PHASE 4</p><h1>Обзор</h1></div><span className="admin-status">DB OK</span></header><div className="admin-grid"><article className="admin-card"><h2>Current DRAFT</h2><code>{String(draft.id)}</code><p>Обновлён: {new Date(String(draft.updatedAt)).toLocaleString("ru")}</p></article><article className="admin-card"><h2>Latest PUBLISHED</h2><code>{String(published.id)}</code><p>{published.publishedAt ? new Date(String(published.publishedAt)).toLocaleString("ru") : "—"}</p></article>{Object.entries(counts).map(([key, value]) => <article className="admin-card admin-card--metric" key={key}><strong>{String(value)}</strong><span>{key}</span></article>)}</div></>;
+  const [data, setData] = useState<AdminDashboardPayload | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [loadFailed, setLoadFailed] = useState(false);
+  async function load() {
+    setLoading(true);
+    setLoadFailed(false);
+    try {
+      setData(await fetchAdminDashboard());
+    } catch {
+      setData(null);
+      setLoadFailed(true);
+    } finally {
+      setLoading(false);
+    }
+  }
+  useEffect(() => { void load(); }, []);
+  if (loading) return <p>Загрузка…</p>;
+  if (loadFailed || !data) return <div role="alert"><p>Не удалось загрузить данные</p><button type="button" className="button-secondary" onClick={() => void load()}>Повторить</button></div>;
+  const { counts, draft, published } = data;
+  return <><header className="admin-heading"><div><p className="eyebrow">PHASE 4</p><h1>Обзор</h1></div><span className="admin-status">DB OK</span></header><div className="admin-grid"><article className="admin-card"><h2>Current DRAFT</h2><code>{draft.id}</code><p>Обновлён: {new Date(draft.updatedAt).toLocaleString("ru")}</p></article><article className="admin-card"><h2>Latest PUBLISHED</h2>{published ? <><code>{published.id}</code><p>{published.publishedAt ? new Date(published.publishedAt).toLocaleString("ru") : "—"}</p></> : <p>Нет опубликованной версии</p>}</article>{Object.entries(counts).map(([key, value]) => <article className="admin-card admin-card--metric" key={key}><strong>{String(value)}</strong><span>{key}</span></article>)}</div></>;
 }
 
 function valueFields(entityType: string) {
@@ -859,6 +874,7 @@ function RelationEntitySummary({ entity, focused = false }: { entity: RelationEn
 function RelationMap() {
   const [draft, setDraft] = useState<Draft | null>(null);
   const [draftError, setDraftError] = useState(false);
+  const [mode, setMode] = useState<"GRAPH" | "FOCUS">("GRAPH");
   const [query, setQuery] = useState("");
   const [focusKey, setFocusKey] = useState("");
   useEffect(() => {
@@ -881,8 +897,13 @@ function RelationMap() {
       <div><p className="eyebrow">Current DRAFT · read-only</p><h1>Карта связей</h1></div>
       <span className="admin-status">Без изменений</span>
     </header>
-    <p className="admin-hint">Выберите одну сущность, чтобы увидеть только её окружение. Редактирование остаётся в разделах «Ответы» и «Модули».</p>
-    <div className="admin-relation-layout">
+    <div className="admin-relation-modes" role="tablist" aria-label="Режим карты связей">
+      <button type="button" role="tab" aria-selected={mode === "GRAPH"} className={mode === "GRAPH" ? "active" : ""} onClick={() => setMode("GRAPH")}>Граф</button>
+      <button type="button" role="tab" aria-selected={mode === "FOCUS"} className={mode === "FOCUS" ? "active" : ""} onClick={() => setMode("FOCUS")}>Фокус</button>
+    </div>
+    {mode === "GRAPH" ? <RelationGraph snapshot={draft.snapshot} /> : <>
+      <p className="admin-hint">Выберите одну сущность, чтобы увидеть только её окружение. Редактирование остаётся в разделах «Ответы» и «Модули».</p>
+      <div className="admin-relation-layout">
       <aside className="admin-relation-picker">
         <label>Поиск по названию или Stable ID<input type="search" value={query} onChange={(event) => setQuery(event.currentTarget.value)} placeholder="Например, M01 или выбор направления" /></label>
         <div className="admin-list">
@@ -916,7 +937,8 @@ function RelationMap() {
           </div>
         </>}
       </section>
-    </div>
+      </div>
+    </>}
   </>;
 }
 
