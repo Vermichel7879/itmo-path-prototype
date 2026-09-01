@@ -57,6 +57,14 @@ export interface TrajectoryDebug {
   ranking: string[];
   tieBreakQuestionIds: string[];
   guardedModules: string[];
+  guardEvaluations: Array<{
+    ruleId: string;
+    moduleId: string;
+    scope: "ALL_RANKING" | "PRIMARY_ONLY";
+    passed: boolean;
+    primaryEligible: boolean;
+    supportEligible: boolean;
+  }>;
   fallbackReason: string | null;
   fallbackConditionIndex: number | null;
   supportThreshold: number;

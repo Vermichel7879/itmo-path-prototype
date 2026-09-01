@@ -91,7 +91,10 @@ export function buildAdminPreviewExplanation(
     ruleId: rule.stableId,
     moduleId: rule.params.moduleId,
     moduleName: moduleById.get(rule.params.moduleId)?.name ?? rule.params.moduleId,
-    excluded: debug.guardedModules.includes(rule.params.moduleId),
+    passed: debug.guardEvaluations.find((item) => item.ruleId === rule.stableId)?.passed ?? true,
+    scope: rule.params.scope ?? "ALL_RANKING",
+    primaryEligible: debug.guardEvaluations.find((item) => item.ruleId === rule.stableId)?.primaryEligible ?? true,
+    supportEligible: debug.guardEvaluations.find((item) => item.ruleId === rule.stableId)?.supportEligible ?? true,
     condition: conditionSummary(rule.params.allowPrimaryWhen),
   }));
 

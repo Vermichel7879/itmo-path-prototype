@@ -78,6 +78,20 @@
       "when": 1788216608454,
       "tag": "0010_batch-session-answer-set",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1788237833172,
+      "tag": "0011_admin-module-create",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1788243000000,
+      "tag": "0012_admin-module-guard",
+      "breakpoints": true
     }
   ]
 }

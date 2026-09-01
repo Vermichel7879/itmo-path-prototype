@@ -71,6 +71,11 @@ k6 выводит `http_reqs` (включая requests/sec), `http_req_failed`, 
 - `config_cache_hits` / `config_cache_misses` / `config_cache_coalesced`.
 - `config_cache_load_success` / `config_cache_load_failure`;
 - `data_api_failure_timeout` / `network` / `http` / `rpc` / `response` / `unknown`.
+- `session_start_failure_400` / `401_403` / `409` / `422` / `429` / `5xx` / `network_timeout` / `other`;
+- `session_start_failure_machine_error` с безопасным tag `error_code` из JSON API.
+
+После любого раннего failure сценарий ждёт случайные 1–3 секунды перед завершением
+iteration. Ошибочный write не повторяется, а VU не начинает следующую iteration мгновенно.
 
 В браузере значения видны в Network → конкретный запрос → Response Headers → `Server-Timing`. В k6 у server metrics есть tag `endpoint` со значениями `SESSION_START`, `QUESTIONNAIRE`, `ANSWER_SAVE`, `TRAJECTORY_RESULT`.
 

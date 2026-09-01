@@ -317,15 +317,42 @@ export function calculateCareerTrajectoryDebug(
     .sort((left, right) => left.sortOrder - right.sortOrder);
   const tieBreakQuestions = tieBreakRules.flatMap((rule) => rule.params.questionIds);
   const guardRules = config.engineRules.filter(
-    (rule): rule is RuleOfKind<"MODULE_GUARD"> => rule.ruleKind === "MODULE_GUARD",
+    (rule): rule is RuleOfKind<"MODULE_GUARD"> =>
+      rule.ruleKind === "MODULE_GUARD" && rule.active,
   );
-  const guardedModules = guardRules
-    .filter((rule) => !conditionMatches(rule.params.allowPrimaryWhen, selectedIdSet, selectedTags))
-    .map((rule) => rule.params.moduleId);
-  const eligibleIds = config.modules
-    .filter((module) => module.active && !guardedModules.includes(module.stableId))
+  const guardEvaluations = guardRules.map((rule) => {
+    const passed = conditionMatches(
+      rule.params.allowPrimaryWhen,
+      selectedIdSet,
+      selectedTags,
+    );
+    const scope = rule.params.scope ?? "ALL_RANKING";
+    return {
+      ruleId: rule.stableId,
+      moduleId: rule.params.moduleId,
+      scope,
+      passed,
+      primaryEligible: passed,
+      supportEligible: passed || scope === "PRIMARY_ONLY",
+    };
+  });
+  const guardedModules = guardEvaluations
+    .filter((guard) => !guard.passed)
+    .map((guard) => guard.moduleId);
+  const allRankingGuardedModules = new Set(
+    guardEvaluations
+      .filter((guard) => !guard.supportEligible)
+      .map((guard) => guard.moduleId),
+  );
+  const primaryOnlyGuardedModules = new Set(
+    guardEvaluations
+      .filter((guard) => !guard.primaryEligible && guard.supportEligible)
+      .map((guard) => guard.moduleId),
+  );
+  const supportEligibleIds = config.modules
+    .filter((module) => module.active && !allRankingGuardedModules.has(module.stableId))
     .map((module) => module.stableId);
-  const ranking = [...eligibleIds].sort((left, right) => {
+  const supportRanking = [...supportEligibleIds].sort((left, right) => {
     if (scores[right] !== scores[left]) return scores[right] - scores[left];
     for (const questionId of tieBreakQuestions) {
       const difference =
@@ -335,6 +362,9 @@ export function calculateCareerTrajectoryDebug(
     }
     return (moduleById.get(left)?.sortOrder ?? 0) - (moduleById.get(right)?.sortOrder ?? 0);
   });
+  const ranking = supportRanking.filter(
+    (moduleId) => !primaryOnlyGuardedModules.has(moduleId),
+  );
 
   const supportRule = requireRule(config, "SUPPORT_SELECTION");
   let primaryId = ranking[0];
@@ -354,7 +384,7 @@ export function calculateCareerTrajectoryDebug(
   const primaryBase = moduleById.get(primaryId);
   if (!primaryBase) throw new Error(`RULE_ENGINE_CONFIG_ERROR module=${primaryId}`);
   const maxSupports = requireRule(config, "RESULT_COMPOSITION").params.maxSupportCount;
-  const supportIds = ranking
+  const supportIds = supportRanking
     .filter(
       (moduleId) =>
         moduleId !== primaryId &&
@@ -568,6 +598,7 @@ export function calculateCareerTrajectoryDebug(
       ranking,
       tieBreakQuestionIds: tieBreakQuestions,
       guardedModules,
+      guardEvaluations,
       fallbackReason,
       fallbackConditionIndex,
       supportThreshold: supportRule.params.supportThreshold,

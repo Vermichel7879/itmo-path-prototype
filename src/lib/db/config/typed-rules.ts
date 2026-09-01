@@ -5,6 +5,7 @@ const nonEmptyText = z.string().trim().min(1);
 const questionId = z.string().regex(/^Q\d+$/);
 const answerId = z.string().regex(/^Q\d+_A\d+$/);
 const moduleId = z.string().regex(/^M\d+$/);
+export const moduleGuardScopeValues = ["ALL_RANKING", "PRIMARY_ONLY"] as const;
 const modifierId = z.string().regex(/^MOD\d+$/);
 
 export const APPROVED_TYPED_RULE_SOURCE_SHA256 =
@@ -58,10 +59,10 @@ const resultAssemblySectionSchema = z
   .strict();
 
 const sourceRuleFields = {
-  stableId: z.string().regex(/^R(?:0[1-9]|1[0-7])$/),
+  stableId: z.string().regex(/^R(?:0[1-9]|[1-9]\d+)$/),
   sourceTitle: nonEmptyText,
   sourceContent: nonEmptyText,
-  sortOrder: z.number().int().min(1).max(17),
+  sortOrder: z.number().int().min(1),
   active: z.boolean(),
 };
 
@@ -326,6 +327,7 @@ const moduleGuardRuleSchema = z
             .strict(),
         ]),
         blockedPolicy: z.literal("REMOVE_FROM_PRIMARY_CANDIDATES"),
+        scope: z.enum(moduleGuardScopeValues).default("ALL_RANKING"),
       })
       .strict(),
   })
@@ -789,6 +791,7 @@ export function createTypedEngineRules(input: {
           answerIds: ["Q1_A5", "Q2_A13", "Q3_A10"],
         },
         blockedPolicy: "REMOVE_FROM_PRIMARY_CANDIDATES",
+        scope: "ALL_RANKING",
       },
     },
     {
@@ -801,6 +804,7 @@ export function createTypedEngineRules(input: {
           tags: ["entrepreneur_signal"],
         },
         blockedPolicy: "REMOVE_FROM_PRIMARY_CANDIDATES",
+        scope: "ALL_RANKING",
       },
     },
     {

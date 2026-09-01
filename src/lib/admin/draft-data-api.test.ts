@@ -195,6 +195,172 @@ describe("canonical draft mutation", () => {
   });
 });
 
+describe("module creation", () => {
+  const createMutation = {
+    entityType: "MODULE_CREATE" as const,
+    stableId: "M42",
+    expectedUpdatedAt,
+    values: {
+      name: "Новый карьерный модуль",
+      goal: "Проверить новую карьерную гипотезу",
+      step1: "Первый шаг",
+      step2: "Второй шаг",
+      step3: "Третий шаг",
+      checkpoint: "Контрольная точка",
+      constraints: "",
+      sortOrder: 42,
+      active: true,
+      forBachelor: false,
+      forMaster: true,
+    },
+  };
+
+  it("creates a valid module without changing existing modules", () => {
+    const current = currentConfig();
+    const existing = structuredClone(current.modules);
+    const next = applyDraftMutationToSnapshot(current, createMutation);
+
+    expect(next.modules.slice(0, existing.length)).toEqual(existing);
+    expect(next.modules.at(-1)).toMatchObject({
+      stableId: "M42",
+      name: createMutation.values.name,
+      steps: ["Первый шаг", "Второй шаг", "Третий шаг"],
+      recommendationStableIds: [],
+    });
+  });
+
+  it("rejects duplicate and invalid module IDs", () => {
+    expect(() => applyDraftMutationToSnapshot(currentConfig(), {
+      ...createMutation,
+      stableId: "M01",
+    })).toThrow("MODULE_ALREADY_EXISTS");
+    expect(draftMutationSchema.safeParse({
+      ...createMutation,
+      stableId: "module-12",
+    }).success).toBe(false);
+  });
+
+  it("allows the created module to use the existing edit mutation", () => {
+    const created = applyDraftMutationToSnapshot(currentConfig(), createMutation);
+    const edited = applyDraftMutationToSnapshot(created, {
+      entityType: "MODULE",
+      stableId: "M42",
+      expectedUpdatedAt,
+      values: { name: "Отредактированный модуль" },
+    });
+
+    expect(edited.modules.find((item) => item.stableId === "M42")?.name)
+      .toBe("Отредактированный модуль");
+  });
+
+  it("sends module creation through one compact atomic RPC", async () => {
+    const draftId = "00000000-0000-4000-8000-000000000003";
+    const actorUserId = "00000000-0000-4000-8000-000000000001";
+    vi.spyOn(adminDataApi, "getDraft").mockResolvedValue({
+      id: draftId,
+      updatedAt: expectedUpdatedAt,
+      snapshotHash: "a".repeat(64),
+      snapshot: currentConfig(),
+    });
+    const createModule = vi.spyOn(adminDataApi, "createModule").mockResolvedValue({
+      id: draftId,
+      updatedAt: "2026-08-24T12:01:00.000Z",
+    });
+    const mutateDraft = vi.spyOn(adminDataApi, "mutateDraft");
+
+    await mutateCurrentDraft({
+      actorUserId,
+      role: "ADMIN",
+      mutation: createMutation,
+    });
+
+    expect(createModule).toHaveBeenCalledWith(expect.objectContaining({
+      stableId: "M42",
+      values: createMutation.values,
+    }));
+    expect(createModule.mock.calls[0][0]).not.toHaveProperty("nextSnapshot");
+    expect(mutateDraft).not.toHaveBeenCalled();
+  });
+});
+
+describe("MODULE_GUARD creation", () => {
+  const createGuard = {
+    entityType: "MODULE_GUARD_CREATE" as const,
+    stableId: "R18",
+    expectedUpdatedAt,
+    values: {
+      sourceTitle: "Guard",
+      sourceContent: "Allow primary only after an explicit answer.",
+      moduleId: "M10",
+      allowPrimaryWhen: { kind: "ANY_ANSWER_ID" as const, answerIds: ["Q1_A6"] },
+      scope: "PRIMARY_ONLY" as const,
+      sortOrder: 18,
+      active: true,
+    },
+  };
+
+  it("creates a valid editable guard while leaving existing rules unchanged", () => {
+    const current = currentConfig();
+    const existing = structuredClone(current.engineRules);
+    const next = applyDraftMutationToSnapshot(current, createGuard);
+
+    expect(next.engineRules.slice(0, existing.length)).toEqual(existing);
+    expect(next.engineRules.at(-1)).toMatchObject({
+      stableId: "R18",
+      ruleKind: "MODULE_GUARD",
+      params: { moduleId: "M10", scope: "PRIMARY_ONLY" },
+    });
+    const edited = applyDraftMutationToSnapshot(next, {
+      entityType: "RULE",
+      stableId: "R18",
+      expectedUpdatedAt,
+      values: { sourceTitle: "Edited guard" },
+    });
+    expect(edited.engineRules.at(-1)?.sourceTitle).toBe("Edited guard");
+  });
+
+  it("rejects duplicate IDs and invalid module or condition references", () => {
+    expect(() => applyDraftMutationToSnapshot(currentConfig(), {
+      ...createGuard,
+      stableId: "R13",
+    })).toThrow("RULE_ALREADY_EXISTS");
+    expect(() => applyDraftMutationToSnapshot(currentConfig(), {
+      ...createGuard,
+      values: { ...createGuard.values, moduleId: "M99" },
+    })).toThrow("MODULE_NOT_FOUND");
+    expect(() => applyDraftMutationToSnapshot(currentConfig(), {
+      ...createGuard,
+      values: {
+        ...createGuard.values,
+        allowPrimaryWhen: { kind: "ANY_ANSWER_ID", answerIds: ["Q99_A1"] },
+      },
+    })).toThrow("ANSWER_NOT_FOUND");
+  });
+
+  it("allows ADMIN through one atomic RPC and denies EDITOR", async () => {
+    const draftId = "00000000-0000-4000-8000-000000000003";
+    const actorUserId = "00000000-0000-4000-8000-000000000001";
+    vi.spyOn(adminDataApi, "getDraft").mockResolvedValue({
+      id: draftId,
+      updatedAt: expectedUpdatedAt,
+      snapshotHash: "a".repeat(64),
+      snapshot: currentConfig(),
+    });
+    const createModuleGuard = vi.spyOn(adminDataApi, "createModuleGuard").mockResolvedValue({
+      id: draftId,
+      updatedAt: "2026-08-24T12:01:00.000Z",
+    });
+
+    await mutateCurrentDraft({ actorUserId, role: "ADMIN", mutation: createGuard });
+    expect(createModuleGuard).toHaveBeenCalledWith(expect.objectContaining({
+      stableId: "R18",
+      values: createGuard.values,
+    }));
+    await expect(mutateCurrentDraft({ actorUserId, role: "EDITOR", mutation: createGuard }))
+      .rejects.toThrow("ADMIN_FORBIDDEN");
+  });
+});
+
 describe("mapping mutation orchestration", () => {
   const draftId = "00000000-0000-4000-8000-000000000003";
   const actorUserId = "00000000-0000-4000-8000-000000000001";

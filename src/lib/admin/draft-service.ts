@@ -15,9 +15,21 @@ import { assertExpectedRevision } from "./concurrency";
 
 const timestampToken = z.iso.datetime({ offset: true });
 const stableId = z.string().trim().regex(/^[A-Z][A-Z0-9_]{0,99}$/);
+const moduleStableId = z.string().trim().regex(/^M(?:0[1-9]|[1-9]\d+)$/);
 const mappingStableId = z.string().regex(/^[A-Z0-9_]+:[A-Z0-9_]+$/);
 const mappingWeight = z.number().int().min(-10).max(10);
 const moduleRecommendationPriority = z.number().int().positive();
+const extensionRuleStableId = z.string().trim().regex(/^R(?:1[89]|[2-9]\d|[1-9]\d{2,})$/);
+const moduleGuardConditionSchema = z.discriminatedUnion("kind", [
+  z.object({
+    kind: z.literal("ANY_ANSWER_ID"),
+    answerIds: z.array(z.string().regex(/^Q\d+_A\d+$/)).min(1),
+  }).strict(),
+  z.object({
+    kind: z.literal("ANY_ANSWER_TAG"),
+    tags: z.array(z.string().trim().min(1)).min(1),
+  }).strict(),
+]);
 
 export const draftMutationSchema = z.discriminatedUnion("entityType", [
   z.object({
@@ -66,6 +78,38 @@ export const draftMutationSchema = z.discriminatedUnion("entityType", [
       active: z.boolean().default(true),
       forBachelor: z.boolean().default(false),
       forMaster: z.boolean().default(true),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("MODULE_CREATE"),
+    stableId: moduleStableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      name: z.string().trim().min(1),
+      goal: z.string().trim().min(1),
+      step1: z.string().trim().min(1),
+      step2: z.string().trim().min(1),
+      step3: z.string().trim().min(1),
+      checkpoint: z.string().trim().min(1),
+      constraints: z.string().trim(),
+      sortOrder: z.number().int().positive(),
+      active: z.boolean(),
+      forBachelor: z.boolean().default(false),
+      forMaster: z.boolean().default(true),
+    }).strict(),
+  }),
+  z.object({
+    entityType: z.literal("MODULE_GUARD_CREATE"),
+    stableId: extensionRuleStableId,
+    expectedUpdatedAt: timestampToken,
+    values: z.object({
+      sourceTitle: z.string().trim().min(1),
+      sourceContent: z.string().trim().min(1),
+      moduleId: moduleStableId,
+      allowPrimaryWhen: moduleGuardConditionSchema,
+      scope: z.enum(["ALL_RANKING", "PRIMARY_ONLY"]),
+      sortOrder: z.number().int().positive(),
+      active: z.boolean(),
     }).strict(),
   }),
   z.object({
@@ -343,6 +387,62 @@ export function applyDraftMutationToSnapshot(
       });
       break;
     }
+    case "MODULE_CREATE": {
+      if (snapshot.modules.some((item) => item.stableId === mutation.stableId)) {
+        throw new Error("MODULE_ALREADY_EXISTS");
+      }
+      snapshot.modules.push({
+        stableId: mutation.stableId,
+        name: mutation.values.name,
+        goal: mutation.values.goal,
+        steps: [mutation.values.step1, mutation.values.step2, mutation.values.step3],
+        checkpoint: mutation.values.checkpoint,
+        recommendationStableIds: [],
+        constraints: mutation.values.constraints,
+        sortOrder: mutation.values.sortOrder,
+        active: mutation.values.active,
+        forBachelor: mutation.values.forBachelor,
+        forMaster: mutation.values.forMaster,
+      });
+      break;
+    }
+    case "MODULE_GUARD_CREATE": {
+      if (snapshot.engineRules.some((item) => item.stableId === mutation.stableId)) {
+        throw new Error("RULE_ALREADY_EXISTS");
+      }
+      if (snapshot.engineRules.some((item) => item.sortOrder === mutation.values.sortOrder)) {
+        throw new Error("RULE_SORT_ORDER_EXISTS");
+      }
+      if (!snapshot.modules.some((item) => item.stableId === mutation.values.moduleId)) {
+        throw new Error("MODULE_NOT_FOUND");
+      }
+      if (mutation.values.allowPrimaryWhen.kind === "ANY_ANSWER_ID") {
+        const answerIds = new Set(snapshot.answers.map((item) => item.stableId));
+        if (mutation.values.allowPrimaryWhen.answerIds.some((id) => !answerIds.has(id))) {
+          throw new Error("ANSWER_NOT_FOUND");
+        }
+      } else {
+        const tags = new Set(snapshot.answers.flatMap((item) => item.tags));
+        if (mutation.values.allowPrimaryWhen.tags.some((tag) => !tags.has(tag))) {
+          throw new Error("ANSWER_TAG_NOT_FOUND");
+        }
+      }
+      snapshot.engineRules.push({
+        stableId: mutation.stableId,
+        sourceTitle: mutation.values.sourceTitle,
+        sourceContent: mutation.values.sourceContent,
+        sortOrder: mutation.values.sortOrder,
+        active: mutation.values.active,
+        ruleKind: "MODULE_GUARD",
+        params: {
+          moduleId: mutation.values.moduleId,
+          allowPrimaryWhen: mutation.values.allowPrimaryWhen,
+          blockedPolicy: "REMOVE_FROM_PRIMARY_CANDIDATES",
+          scope: mutation.values.scope,
+        },
+      });
+      break;
+    }
     case "QUESTION": {
       Object.assign(
         required(snapshot.questions, mutation.stableId, "QUESTION_NOT_FOUND"),
@@ -566,6 +666,8 @@ export async function mutateCurrentDraft(input: {
     "MODULE_RECOMMENDATION_CREATE",
     "MODULE_RECOMMENDATION_UPDATE",
     "MODULE_RECOMMENDATION_DELETE",
+    "MODULE_CREATE",
+    "MODULE_GUARD_CREATE",
     "RULE",
     "MODIFIER",
   ].includes(input.mutation.entityType) ||
@@ -598,7 +700,13 @@ export async function mutateCurrentDraft(input: {
         : input.mutation.entityType === "MODULE_RECOMMENDATION_DELETE"
           ? "DELETE"
           : null;
-  const relationOperation = mappingOperation ?? moduleRecommendationOperation;
+  const moduleCreateOperation = input.mutation.entityType === "MODULE_CREATE"
+    ? "CREATE"
+    : null;
+  const moduleGuardCreateOperation = input.mutation.entityType === "MODULE_GUARD_CREATE"
+    ? "CREATE"
+    : null;
+  const relationOperation = mappingOperation ?? moduleRecommendationOperation ?? moduleCreateOperation ?? moduleGuardCreateOperation;
   const audit = {
     operation: relationOperation,
     changedFields: Object.keys(input.mutation.values),
@@ -609,13 +717,31 @@ export async function mutateCurrentDraft(input: {
     input.mutation;
   let result: Awaited<ReturnType<typeof adminDataApi.mutateDraft>>;
   try {
-    result = await adminDataApi.mutateDraft({
-      actorUserId: input.actorUserId,
-      expectedUpdatedAt: input.mutation.expectedUpdatedAt,
-      expectedSnapshotHash: draft.snapshotHash,
-      mutation: compactMutation,
-      audit,
-    });
+    result = input.mutation.entityType === "MODULE_CREATE"
+      ? await adminDataApi.createModule({
+          actorUserId: input.actorUserId,
+          expectedUpdatedAt: input.mutation.expectedUpdatedAt,
+          expectedSnapshotHash: draft.snapshotHash,
+          stableId: input.mutation.stableId,
+          values: input.mutation.values,
+          audit,
+        })
+      : input.mutation.entityType === "MODULE_GUARD_CREATE"
+        ? await adminDataApi.createModuleGuard({
+            actorUserId: input.actorUserId,
+            expectedUpdatedAt: input.mutation.expectedUpdatedAt,
+            expectedSnapshotHash: draft.snapshotHash,
+            stableId: input.mutation.stableId,
+            values: input.mutation.values,
+            audit,
+          })
+      : await adminDataApi.mutateDraft({
+          actorUserId: input.actorUserId,
+          expectedUpdatedAt: input.mutation.expectedUpdatedAt,
+          expectedSnapshotHash: draft.snapshotHash,
+          mutation: compactMutation,
+          audit,
+        });
   } catch (error) {
     if (
       error instanceof AdminDataApiError &&
@@ -658,7 +784,9 @@ function snapshotEntityValues(
   if (
     mutation.entityType === "QUESTION_CREATE" ||
     mutation.entityType === "ANSWER_CREATE" ||
-    mutation.entityType === "RECOMMENDATION_CREATE"
+    mutation.entityType === "RECOMMENDATION_CREATE" ||
+    mutation.entityType === "MODULE_CREATE" ||
+    mutation.entityType === "MODULE_GUARD_CREATE"
   ) return null;
   const collections = {
     QUESTION: snapshot.questions,

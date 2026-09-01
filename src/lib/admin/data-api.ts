@@ -260,6 +260,48 @@ export function createAdminDataApi(client?: AdminRpcClient) {
         draftMutationResultSchema,
       );
     },
+    createModule(input: {
+      actorUserId: string;
+      expectedUpdatedAt: string;
+      expectedSnapshotHash: string;
+      stableId: string;
+      values: Record<string, unknown>;
+      audit: Record<string, unknown>;
+    }) {
+      return rpc(
+        "admin_create_module",
+        {
+          p_actor_user_id: input.actorUserId,
+          p_expected_updated_at: input.expectedUpdatedAt,
+          p_expected_snapshot_hash: input.expectedSnapshotHash,
+          p_stable_id: input.stableId,
+          p_values: input.values,
+          p_audit: input.audit,
+        },
+        draftMutationResultSchema,
+      );
+    },
+    createModuleGuard(input: {
+      actorUserId: string;
+      expectedUpdatedAt: string;
+      expectedSnapshotHash: string;
+      stableId: string;
+      values: Record<string, unknown>;
+      audit: Record<string, unknown>;
+    }) {
+      return rpc(
+        "admin_create_module_guard",
+        {
+          p_actor_user_id: input.actorUserId,
+          p_expected_updated_at: input.expectedUpdatedAt,
+          p_expected_snapshot_hash: input.expectedSnapshotHash,
+          p_stable_id: input.stableId,
+          p_values: input.values,
+          p_audit: input.audit,
+        },
+        draftMutationResultSchema,
+      );
+    },
     publishDraft(input: {
       actorUserId: string;
       expectedUpdatedAt: string;

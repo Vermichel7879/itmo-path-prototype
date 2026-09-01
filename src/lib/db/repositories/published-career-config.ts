@@ -62,15 +62,16 @@ const publishedSelection = {
     and jsonb_array_length(${configVersions.snapshot} -> 'answers') > 0
     and jsonb_typeof(${configVersions.snapshot} -> 'modules') = 'array'
     and jsonb_array_length(${configVersions.snapshot} -> 'modules') > 0
-    and jsonb_array_length(${configVersions.snapshot} -> 'engineRules') = 17
+    and jsonb_array_length(${configVersions.snapshot} -> 'engineRules') >= 17
     and jsonb_array_length(${configVersions.snapshot} -> 'documentationExamples') = 7
   `,
   rulesComplete: sql<boolean>`
-    (select array_agg(item ->> 'stableId' order by item ->> 'stableId')
-     from jsonb_array_elements(${configVersions.snapshot} -> 'engineRules') item) = array[
-      'R01','R02','R03','R04','R05','R06','R07','R08','R09',
-      'R10','R11','R12','R13','R14','R15','R16','R17'
-    ]
+    (select count(distinct item ->> 'stableId')
+     from jsonb_array_elements(${configVersions.snapshot} -> 'engineRules') item
+     where item ->> 'stableId' = any(array[
+       'R01','R02','R03','R04','R05','R06','R07','R08','R09',
+       'R10','R11','R12','R13','R14','R15','R16','R17'
+     ])) = 17
   `,
 };
 

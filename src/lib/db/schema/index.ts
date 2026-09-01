@@ -469,7 +469,7 @@ export const engineRules = pgTable(
     check("engine_rules_sort_positive", sql`${table.sortOrder} > 0`),
     check(
       "engine_rules_stable_id_format",
-      sql`${table.stableId} ~ '^R(0[1-9]|1[0-7])$'`,
+      sql`${table.stableId} ~ '^R(0[1-9]|[1-9][0-9]+)$'`,
     ),
     check(
       "engine_rules_source_not_blank",

@@ -292,16 +292,24 @@ export const careerImportSchema = z
       { length: 17 },
       (_, index) => `R${String(index + 1).padStart(2, "0")}`,
     );
-    const actualRuleIds = config.engineRules
-      .map((rule) => rule.stableId)
-      .sort();
-    if (JSON.stringify(actualRuleIds) !== JSON.stringify(expectedRuleIds)) {
+    const actualRuleIds = new Set(config.engineRules.map((rule) => rule.stableId));
+    if (expectedRuleIds.some((ruleId) => !actualRuleIds.has(ruleId))) {
       context.addIssue({
         code: "custom",
         path: ["engineRules"],
-        message: "engineRules must contain R01-R17 exactly once",
+        message: "engineRules must contain core R01-R17 exactly once",
       });
     }
+    config.engineRules.forEach((rule, index) => {
+      const numericId = Number.parseInt(rule.stableId.slice(1), 10);
+      if (numericId > 17 && rule.ruleKind !== "MODULE_GUARD") {
+        context.addIssue({
+          code: "custom",
+          path: ["engineRules", index, "ruleKind"],
+          message: "extension engine rules may only use MODULE_GUARD",
+        });
+      }
+    });
 
     const expectedExampleIds = Array.from(
       { length: 7 },

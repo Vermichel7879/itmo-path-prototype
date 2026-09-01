@@ -31,7 +31,12 @@ describe("admin result debugger", () => {
     if (mapping) mapping.weight = 10;
     else current.mappings.push({ answerStableId: "Q2_A1", questionStableId: "Q2", moduleStableId: "M09", weight: 10 });
     const guarded = calculateCareerTrajectoryDebug("draft", current, ["Q2_A1"]);
-    expect(buildAdminPreviewExplanation(current, guarded).guards.find((item) => item.moduleId === "M09")?.excluded).toBe(true);
+    expect(buildAdminPreviewExplanation(current, guarded).guards.find((item) => item.moduleId === "M09")).toMatchObject({
+      passed: false,
+      scope: "ALL_RANKING",
+      primaryEligible: false,
+      supportEligible: false,
+    });
 
     const fallback = calculateCareerTrajectoryDebug("draft", config(), ["Q1_A1"]);
     const fallbackExplanation = buildAdminPreviewExplanation(config(), fallback);
@@ -45,5 +50,32 @@ describe("admin result debugger", () => {
     expect(explanation.modifiers.some((item) => item.id === "MOD01" && item.triggerAnswers.some((answer) => answer.id === "Q4_A1"))).toBe(true);
     expect(explanation.recommendations.length).toBe(calculation.result.recommendations.length);
     expect(explanation.recommendations.every((item) => ["PRIMARY", "SUPPORT", "SPECIAL"].includes(item.source))).toBe(true);
+  });
+
+  it("shows an extension guard scope and separate primary/support eligibility", () => {
+    const current = config();
+    current.engineRules.push({
+      stableId: "R18",
+      sourceTitle: "Guard",
+      sourceContent: "Explicit signal required for primary.",
+      sortOrder: 18,
+      active: true,
+      ruleKind: "MODULE_GUARD",
+      params: {
+        moduleId: "M10",
+        allowPrimaryWhen: { kind: "ANY_ANSWER_ID", answerIds: ["Q1_A6"] },
+        blockedPolicy: "REMOVE_FROM_PRIMARY_CANDIDATES",
+        scope: "PRIMARY_ONLY",
+      },
+    });
+    const calculation = calculateCareerTrajectoryDebug("draft", current, ["Q1_A1"]);
+
+    expect(buildAdminPreviewExplanation(current, calculation).guards.find((item) => item.ruleId === "R18"))
+      .toMatchObject({
+        passed: false,
+        scope: "PRIMARY_ONLY",
+        primaryEligible: false,
+        supportEligible: true,
+      });
   });
 });

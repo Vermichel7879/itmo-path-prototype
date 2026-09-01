@@ -92,7 +92,7 @@ const sectionConfig: Record<string, { key: string; title: string; entityType: st
   recommendations: { key: "recommendations", title: "Рекомендации", entityType: "RECOMMENDATION" },
   opportunities: { key: "opportunities", title: "Возможности", entityType: "OPPORTUNITY" },
   modifiers: { key: "modifiers", title: "Модификаторы", entityType: "MODIFIER" },
-  rules: { key: "engineRules", title: "Правила R01–R17", entityType: "RULE" },
+  rules: { key: "engineRules", title: "Правила", entityType: "RULE" },
   mappings: { key: "mappings", title: "Веса и маппинги", entityType: "WEIGHT" },
 };
 
@@ -613,15 +613,128 @@ function TypedFields({ prefix, value }: { prefix: string; value: unknown }) {
   return <fieldset><legend>{prefix === "params" ? "Typed params" : "Human effect"}</legend>{typedLeaves(value).map((leaf) => <label key={`${prefix}-${leaf.path.join("-")}`}>{leaf.path.join(" › ")}{typeof leaf.value === "boolean" ? <select name={typedFormName(prefix, leaf.path)} defaultValue={String(leaf.value)}><option value="true">true</option><option value="false">false</option></select> : <input name={typedFormName(prefix, leaf.path)} type={typeof leaf.value === "number" ? "number" : "text"} defaultValue={leaf.value ?? ""} />}</label>)}</fieldset>;
 }
 
-function CreateEntityForm({ entityType, draft, onCreated }: { entityType: string; draft: Draft; onCreated: () => Promise<void> }) {
+function moduleCreateErrorMessage(code: string | undefined) {
+  const messages: Record<string, string> = {
+    MODULE_ALREADY_EXISTS: "Модуль с таким Module ID уже существует.",
+    INVALID_DRAFT_MUTATION: "Проверьте Module ID и обязательные поля модуля.",
+    DRAFT_MUTATION_INVALID_CONFIG: "Новый модуль нарушает целостность DRAFT-конфигурации.",
+    DRAFT_STALE_REVISION: "DRAFT изменён другим пользователем. Обновите страницу и повторите создание.",
+    ADMIN_FORBIDDEN: "Создавать модули может только ADMIN.",
+  };
+  return messages[code ?? ""] ?? "Не удалось создать модуль.";
+}
+
+function moduleGuardCreateErrorMessage(code: string | undefined) {
+  const messages: Record<string, string> = {
+    RULE_ALREADY_EXISTS: "Правило с таким Stable ID уже существует.",
+    RULE_SORT_ORDER_EXISTS: "Этот порядок уже занят другим правилом.",
+    MODULE_NOT_FOUND: "Выбранный модуль не найден.",
+    ANSWER_NOT_FOUND: "Один из выбранных ответов не найден.",
+    ANSWER_TAG_NOT_FOUND: "Один из выбранных тегов не найден.",
+    INVALID_DRAFT_MUTATION: "Проверьте Stable ID, условие и обязательные поля.",
+    DRAFT_MUTATION_INVALID_CONFIG: "Guard нарушает typed validation DRAFT-конфигурации.",
+    DRAFT_STALE_REVISION: "DRAFT уже изменён. Обновите страницу и повторите создание.",
+    ADMIN_FORBIDDEN: "Создавать guards может только ADMIN.",
+  };
+  return messages[code ?? ""] ?? "Не удалось создать MODULE_GUARD.";
+}
+
+function ModuleGuardCreateForm({
+  draft,
+  role,
+  onCreated,
+}: {
+  draft: Draft;
+  role: "ADMIN" | "EDITOR";
+  onCreated: () => Promise<void>;
+}) {
+  const [conditionKind, setConditionKind] = useState<"ANY_ANSWER_ID" | "ANY_ANSWER_TAG">("ANY_ANSWER_ID");
   const [message, setMessage] = useState("");
-  if (!(["QUESTION", "ANSWER", "RECOMMENDATION"].includes(entityType))) return null;
-  const questions = draft.snapshot.questions as Json[];
+  if (role !== "ADMIN") return null;
+
+  const rules = draft.snapshot.engineRules as Json[];
+  const modules = draft.snapshot.modules as Json[];
+  const answers = draft.snapshot.answers as Json[];
+  const nextRuleNumber = Math.max(17, ...rules.map((rule) => Number(String(rule.stableId).slice(1)) || 0)) + 1;
+  const nextSortOrder = Math.max(0, ...rules.map((rule) => Number(rule.sortOrder) || 0)) + 1;
+  const tags = [...new Set(answers.flatMap((answer) => Array.isArray(answer.tags) ? answer.tags.map(String) : []))].sort();
 
   async function create(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const form = new FormData(event.currentTarget);
-    const common = { stableId: form.get("stableId"), expectedUpdatedAt: draft.updatedAt };
+    const conditionValues = form.getAll("conditionValue").map(String).filter(Boolean);
+    const allowPrimaryWhen = conditionKind === "ANY_ANSWER_ID"
+      ? { kind: conditionKind, answerIds: conditionValues }
+      : { kind: conditionKind, tags: conditionValues };
+    const response = await fetch("/api/admin/draft", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        entityType: "MODULE_GUARD_CREATE",
+        stableId: String(form.get("stableId") ?? "").trim(),
+        expectedUpdatedAt: draft.updatedAt,
+        values: {
+          sourceTitle: form.get("sourceTitle"),
+          sourceContent: form.get("sourceContent"),
+          moduleId: form.get("moduleId"),
+          allowPrimaryWhen,
+          scope: form.get("scope"),
+          sortOrder: Number(form.get("sortOrder")),
+          active: form.get("active") === "on",
+        },
+      }),
+    });
+    const result = await response.json() as { error?: string };
+    setMessage(response.ok ? "MODULE_GUARD создан в DRAFT." : moduleGuardCreateErrorMessage(result.error));
+    if (response.ok) {
+      event.currentTarget.reset();
+      setConditionKind("ANY_ANSWER_ID");
+      await onCreated();
+    }
+  }
+
+  const conditionOptions = conditionKind === "ANY_ANSWER_ID"
+    ? answers.map((answer) => ({
+        value: String(answer.stableId),
+        label: `${String(answer.stableId)} · ${String(answer.text)}`,
+      }))
+    : tags.map((tag) => ({ value: tag, label: tag }));
+
+  return (
+    <details className="admin-card">
+      <summary>Добавить MODULE_GUARD</summary>
+      <form className="admin-form" onSubmit={create}>
+        <label>Stable ID<input name="stableId" pattern="R(1[89]|[2-9][0-9]|[1-9][0-9]{2,})" defaultValue={`R${nextRuleNumber}`} required /></label>
+        <label>Название<input name="sourceTitle" required /></label>
+        <label>Описание правила<textarea name="sourceContent" required /></label>
+        <label>Модуль<select name="moduleId" required>{modules.map((careerModule) => <option key={String(careerModule.stableId)} value={String(careerModule.stableId)}>{String(careerModule.stableId)} · {String(careerModule.name)}</option>)}</select></label>
+        <label>Тип условия<select name="conditionKind" value={conditionKind} onChange={(event) => setConditionKind(event.currentTarget.value as typeof conditionKind)}><option value="ANY_ANSWER_ID">ANY_ANSWER_ID</option><option value="ANY_ANSWER_TAG">ANY_ANSWER_TAG</option></select></label>
+        <label>Значения условия<select name="conditionValue" multiple size={Math.min(8, Math.max(3, conditionOptions.length))} required>{conditionOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><small>Можно выбрать несколько значений.</small></label>
+        <label>Scope<select name="scope"><option value="ALL_RANKING">ALL_RANKING · исключить полностью</option><option value="PRIMARY_ONLY">PRIMARY_ONLY · запретить только PRIMARY</option></select></label>
+        <label>Sort order<input name="sortOrder" type="number" min="1" defaultValue={nextSortOrder} required /></label>
+        <label className="admin-checkbox"><input name="active" type="checkbox" defaultChecked /> active</label>
+        <button className="button-primary">Создать guard</button>
+        {message ? <p role="status">{message}</p> : null}
+      </form>
+    </details>
+  );
+}
+
+function CreateEntityForm({ entityType, draft, role, onCreated }: { entityType: string; draft: Draft; role: "ADMIN" | "EDITOR"; onCreated: () => Promise<void> }) {
+  const [message, setMessage] = useState("");
+  if (!(["QUESTION", "ANSWER", "MODULE", "RECOMMENDATION"].includes(entityType))) return null;
+  if (entityType === "MODULE" && role !== "ADMIN") return null;
+  const questions = draft.snapshot.questions as Json[];
+  const modules = draft.snapshot.modules as Json[];
+  const nextModuleSortOrder = modules.reduce(
+    (maximum, item) => Math.max(maximum, Number(item.sortOrder) || 0),
+    0,
+  ) + 1;
+
+  async function create(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const form = new FormData(event.currentTarget);
+    const common = { stableId: String(form.get("stableId") ?? "").trim(), expectedUpdatedAt: draft.updatedAt };
     const lists = {
       tags: String(form.get("tags") ?? "").split(",").map((value) => value.trim()).filter(Boolean),
       keys: String(form.get("keys") ?? "").split(",").map((value) => value.trim()).filter(Boolean),
@@ -642,6 +755,15 @@ function CreateEntityForm({ entityType, draft, onCreated }: { entityType: string
         questionStableId: form.get("questionStableId"), text: form.get("text"),
         sortOrder: Number(form.get("sortOrder")), tags: lists.tags, keys: lists.keys, active: true,
       },
+    } : entityType === "MODULE" ? {
+      entityType: "MODULE_CREATE", ...common,
+      values: {
+        name: form.get("name"), goal: form.get("goal"),
+        step1: form.get("step1"), step2: form.get("step2"), step3: form.get("step3"),
+        checkpoint: form.get("checkpoint"), constraints: form.get("constraints") ?? "",
+        sortOrder: Number(form.get("sortOrder")), active: form.get("active") === "on",
+        forBachelor: form.get("forBachelor") === "on", forMaster: form.get("forMaster") === "on",
+      },
     } : {
       entityType: "RECOMMENDATION_CREATE", ...common,
       values: {
@@ -657,13 +779,17 @@ function CreateEntityForm({ entityType, draft, onCreated }: { entityType: string
       body: JSON.stringify(payload),
     });
     const result = await response.json() as { error?: string };
-    setMessage(response.ok ? "Создано в DRAFT." : result.error ?? "Не удалось создать запись.");
+    setMessage(response.ok
+      ? "Создано в DRAFT."
+      : entityType === "MODULE"
+        ? moduleCreateErrorMessage(result.error)
+        : result.error ?? "Не удалось создать запись.");
     if (response.ok) { event.currentTarget.reset(); await onCreated(); }
   }
 
-  const title = entityType === "QUESTION" ? "вопрос вместе с первым ответом" : entityType === "ANSWER" ? "ответ" : "рекомендацию";
-  return <details className="admin-card"><summary>Создать {title}</summary><form className="admin-form" onSubmit={create}>
-    <label>Stable ID<input name="stableId" pattern={entityType === "QUESTION" ? "Q[0-9]+" : entityType === "ANSWER" ? "Q[0-9]+_A[0-9]+" : "[A-Z][A-Z0-9_]*"} required /></label>
+  const title = entityType === "QUESTION" ? "вопрос вместе с первым ответом" : entityType === "ANSWER" ? "ответ" : entityType === "MODULE" ? "модуль" : "рекомендацию";
+  return <details className="admin-card"><summary>{entityType === "MODULE" ? "Добавить модуль" : `Создать ${title}`}</summary><form className="admin-form" onSubmit={create}>
+    <label>{entityType === "MODULE" ? "Module ID" : "Stable ID"}<input name="stableId" pattern={entityType === "QUESTION" ? "Q[0-9]+" : entityType === "ANSWER" ? "Q[0-9]+_A[0-9]+" : entityType === "MODULE" ? "M(0[1-9]|[1-9][0-9]+)" : "[A-Z][A-Z0-9_]*"} placeholder={entityType === "MODULE" ? "M12" : undefined} required /></label>
     {entityType === "QUESTION" && <>
       <label>Блок<input name="block" required /></label><label>Текст<textarea name="text" required /></label>
       <label>Тип<select name="selectionType"><option>SINGLE</option><option>MULTI</option></select></label>
@@ -680,13 +806,24 @@ function CreateEntityForm({ entityType, draft, onCreated }: { entityType: string
       <label>Текст<input name="text" required /></label><label>Sort order<input name="sortOrder" type="number" min="1" required /></label>
       <label>Tags <small>через запятую</small><input name="tags" /></label><label>Keys <small>через запятую</small><input name="keys" /></label>
     </>}
+    {entityType === "MODULE" && <>
+      <label>Название<input name="name" required /></label>
+      <label>Goal<textarea name="goal" required /></label>
+      <label>Step 1<textarea name="step1" required /></label>
+      <label>Step 2<textarea name="step2" required /></label>
+      <label>Step 3<textarea name="step3" required /></label>
+      <label>Checkpoint<textarea name="checkpoint" required /></label>
+      <label>Constraints<textarea name="constraints" /></label>
+      <label>Порядок отображения<input name="sortOrder" type="number" min="1" defaultValue={nextModuleSortOrder} required /></label>
+      <label className="admin-checkbox"><input name="active" type="checkbox" defaultChecked /> active</label>
+    </>}
     {entityType === "RECOMMENDATION" && <>
       <label>Тип<select name="type"><option>CKO_SERVICE</option><option>EVENT</option><option>CLUB</option><option>FACULTY</option><option>GENERAL</option></select></label>
       <label>Название<input name="title" required /></label><label>Описание<textarea name="description" required /></label>
       <label>URL<input name="url" type="url" /></label><label>Статус<select name="status"><option>ACTIVE</option><option>SLOT</option><option>INACTIVE</option></select></label>
       <label>Tags <small>через запятую</small><input name="tags" /></label><label>Priority tags <small>через запятую</small><input name="priorityTags" /></label>
     </>}
-    {["QUESTION", "RECOMMENDATION"].includes(entityType) && <fieldset><legend>Для кого</legend><label className="admin-checkbox"><input name="forBachelor" type="checkbox" /> Бакалавриат</label><label className="admin-checkbox"><input name="forMaster" type="checkbox" defaultChecked /> Магистратура</label></fieldset>}
+    {["QUESTION", "MODULE", "RECOMMENDATION"].includes(entityType) && <fieldset><legend>Для кого</legend><label className="admin-checkbox"><input name="forBachelor" type="checkbox" /> Бакалавриат</label><label className="admin-checkbox"><input name="forMaster" type="checkbox" defaultChecked /> Магистратура</label></fieldset>}
     <button className="button-primary">Создать</button>{message && <p role="status">{message}</p>}
   </form></details>;
 }
@@ -788,7 +925,8 @@ function EntitySection({ section, role }: { section: string; role: "ADMIN" | "ED
       <div><p className="eyebrow">DRAFT only</p><h1>{config.title}</h1></div>
       <span className={draft.validation.valid ? "admin-status" : "admin-status admin-status--error"}>{draft.validation.valid ? "Готово" : "Есть ошибки"}</span>
     </header>
-    <CreateEntityForm entityType={config.entityType} draft={draft} onCreated={load} />
+    <CreateEntityForm entityType={config.entityType} draft={draft} role={role} onCreated={load} />
+    {config.entityType === "RULE" ? <ModuleGuardCreateForm draft={draft} role={role} onCreated={load} /> : null}
     <div className="admin-editor">
       <div className="admin-list">
         {items.map((candidate, index) => {
@@ -970,7 +1108,7 @@ function PreviewDebugger({ calculation }: { calculation: PreviewCalculation }) {
     <section className="admin-card"><h3>Score breakdown</h3><div className="admin-debug-grid">{explanation.scoreBreakdown.map((item) => <article key={item.moduleId}><h4>{item.name} <small>{item.moduleId}</small></h4>{item.contributions.length ? <ul>{item.contributions.map((entry, index) => <li key={`${entry.answerId}:${index}`}><span>{entry.answerText} <small>{entry.answerId}</small></span><b>{entry.weight >= 0 ? "+" : ""}{entry.weight}</b></li>)}</ul> : <p className="admin-hint">Нет score-вкладов.</p>}<strong>TOTAL = {item.total}</strong></article>)}</div></section>
     <section className="admin-card"><h3>Tie-break</h3>{explanation.tieBreaks.length ? explanation.tieBreaks.map((tie) => <article className="admin-debug-block" key={`${tie.total}:${tie.moduleIds.join(":")}`}><p><strong>TOTAL equal: {tie.total}</strong> · {tie.moduleIds.join(" / ")}</p><ol>{tie.steps.map((step) => <li key={step.criterion}>{step.criterion}: {step.values.map((value) => `${value.moduleId}=${value.value}`).join(", ")}</li>)}</ol><p>Победитель: <strong>{tie.winnerModuleId}</strong>. Решающий этап: <strong>{tie.decidedBy}</strong>.</p></article>) : <p>Одинаковых TOTAL в текущем ranking нет.</p>}</section>
     <div className="admin-grid">
-      <section className="admin-card"><h3>Guards и fallback</h3>{explanation.guards.map((guard) => <p key={guard.ruleId}><strong>{guard.moduleName} · {guard.moduleId}</strong><br />{guard.excluded ? "Исключён" : "Допущен"}: {guard.condition}</p>)}{explanation.fallback ? <div className="admin-debug-notice"><strong>Fallback сработал</strong><p>Обычный ranking не достиг threshold. Выбран {explanation.fallback.selectedModuleName} · {explanation.fallback.selectedModuleId}.</p><p>Условие: {explanation.fallback.condition}</p></div> : <p>Fallback не применялся.</p>}</section>
+      <section className="admin-card"><h3>Guards и fallback</h3>{explanation.guards.map((guard) => <p key={guard.ruleId}><strong>{guard.moduleName} · {guard.moduleId}</strong><br />Guard: {guard.passed ? "passed" : "failed"} · Scope: {guard.scope}<br />PRIMARY: {guard.primaryEligible ? "allowed" : "blocked"} · Support: {guard.supportEligible ? "eligible" : "blocked"}<br />Условие: {guard.condition}</p>)}{explanation.fallback ? <div className="admin-debug-notice"><strong>Fallback сработал</strong><p>Обычный ranking не достиг threshold. Выбран {explanation.fallback.selectedModuleName} · {explanation.fallback.selectedModuleId}.</p><p>Условие: {explanation.fallback.condition}</p></div> : <p>Fallback не применялся.</p>}</section>
       <section className="admin-card"><h3>Modifiers</h3>{explanation.modifiers.length ? explanation.modifiers.map((modifier) => <p key={modifier.id}><strong>{modifier.id}</strong> · {modifier.operationKind}<br />Цель: {modifier.targetModuleName}<br />Триггер: {modifier.triggerAnswers.map((answer) => `${answer.text} · ${answer.id}`).join(", ") || "системное условие"}<br />Изменение: {modifier.change}</p>) : <p>Модификаторы не применялись.</p>}</section>
     </div>
     <section className="admin-card"><h3>Q6 / Q7 / Q8 и предпринимательство</h3><div className="admin-debug-grid"><article><h4>Q6 · Приоритеты</h4>{explanation.selections.priorities.length ? explanation.selections.priorities.map((item) => <p key={item.id}>{item.text} <small>{item.id}</small></p>) : <p>Не выбраны.</p>}</article><article><h4>Q7 · Темп</h4>{explanation.selections.pace.answers.map((item) => <p key={item.id}>{item.text} <small>{item.id}</small></p>)}<p>{explanation.selections.pace.result?.text ?? "Темп не применён."}</p></article><article><h4>Q8 · Формат поддержки</h4>{explanation.selections.preferences.length ? explanation.selections.preferences.map((item) => <p key={item.id}>{item.text} <small>{item.id}</small></p>) : <p>Предпочтения не выбраны.</p>}</article><article><h4>Предпринимательство</h4><p>entrepreneur_signal: {explanation.entrepreneurship.active ? "да" : "нет"}</p><p>Стадия: {explanation.entrepreneurship.stage ? `${explanation.entrepreneurship.stage.focus} · ${explanation.entrepreneurship.stage.id}` : "—"}</p><p>Challenges: {explanation.entrepreneurship.challengeIds.join(", ") || "—"}</p>{explanation.entrepreneurship.ignoredAnswerIds.length ? <p>Игнорированы скрытые ответы: {explanation.entrepreneurship.ignoredAnswerIds.join(", ")}</p> : null}</article></div></section>

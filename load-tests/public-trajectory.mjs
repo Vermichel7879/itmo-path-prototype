@@ -7,6 +7,10 @@ import {
   buildProgressiveAnswerBatches,
   buildValidAnswerPlan,
 } from "./lib/questionnaire.mjs";
+import {
+  safeMachineErrorCode,
+  sessionStartFailureBucket,
+} from "./lib/failure-classification.mjs";
 
 const PROFILE = __ENV.PROFILE || "smoke";
 const BASE_URL = (__ENV.BASE_URL || "http://127.0.0.1:3000").replace(/\/$/, "");
@@ -100,6 +104,26 @@ const dataApiFailureHttp = new Counter("data_api_failure_http");
 const dataApiFailureRpc = new Counter("data_api_failure_rpc");
 const dataApiFailureResponse = new Counter("data_api_failure_response");
 const dataApiFailureUnknown = new Counter("data_api_failure_unknown");
+const sessionStartFailure400 = new Counter("session_start_failure_400");
+const sessionStartFailureAuth = new Counter("session_start_failure_401_403");
+const sessionStartFailure409 = new Counter("session_start_failure_409");
+const sessionStartFailure422 = new Counter("session_start_failure_422");
+const sessionStartFailure429 = new Counter("session_start_failure_429");
+const sessionStartFailure5xx = new Counter("session_start_failure_5xx");
+const sessionStartFailureNetworkTimeout = new Counter("session_start_failure_network_timeout");
+const sessionStartFailureOther = new Counter("session_start_failure_other");
+const sessionStartFailureMachineError = new Counter("session_start_failure_machine_error");
+
+const sessionStartFailureCounters = {
+  "400": sessionStartFailure400,
+  "401_403": sessionStartFailureAuth,
+  "409": sessionStartFailure409,
+  "422": sessionStartFailure422,
+  "429": sessionStartFailure429,
+  "5xx": sessionStartFailure5xx,
+  network_timeout: sessionStartFailureNetworkTimeout,
+  other: sessionStartFailureOther,
+};
 
 const serverTimingCounters = {
   config_cache_hit: configCacheHits,
@@ -149,16 +173,31 @@ function requestParams(name) {
 
 function stop(stage) {
   flowErrors.add(1, { stage });
+  think();
   fail(`${stage}_FAILED`);
 }
 
-function responseJson(response, stage) {
+function safeResponseJson(response) {
   try {
     return response.json();
   } catch {
-    stop(stage);
     return null;
   }
+}
+
+function recordSessionStartFailure(response) {
+  const bucket = sessionStartFailureBucket(response.status);
+  sessionStartFailureCounters[bucket].add(1);
+  const errorCode = safeMachineErrorCode(safeResponseJson(response));
+  if (errorCode) sessionStartFailureMachineError.add(1, { error_code: errorCode });
+}
+
+function responseJson(response, stage) {
+  const parsed = safeResponseJson(response);
+  if (parsed === null) {
+    stop(stage);
+  }
+  return parsed;
 }
 
 function recordServerTiming(response, endpoint) {
@@ -190,7 +229,10 @@ export default function publicTrajectoryFlow() {
   sessionStartDuration.add(startResponse.timings.duration);
   if (!check(startResponse, {
     "session start returns 201": (response) => response.status === 201,
-  })) stop("SESSION_START");
+  })) {
+    recordSessionStartFailure(startResponse);
+    stop("SESSION_START");
+  }
   const session = responseJson(startResponse, "SESSION_START");
   if (
     !session ||

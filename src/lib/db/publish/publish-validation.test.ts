@@ -3,7 +3,10 @@ import { resolve } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { validateInitialPublishSnapshot } from "./publish-validation";
+import {
+  validateInitialPublishSnapshot,
+  validatePublishableCareerSnapshot,
+} from "./publish-validation";
 
 function seed() {
   return JSON.parse(
@@ -32,5 +35,25 @@ describe("initial publish validation", () => {
     expect(() => validateInitialPublishSnapshot(snapshot)).toThrow(
       /MODULE_SORT_ORDER/,
     );
+  });
+
+  it("allows a typed MODULE_GUARD extension while retaining the core rules", () => {
+    const snapshot = seed();
+    snapshot.engineRules.push({
+      stableId: "R18",
+      sourceTitle: "Guard",
+      sourceContent: "Extension guard",
+      sortOrder: 18,
+      active: true,
+      ruleKind: "MODULE_GUARD",
+      params: {
+        moduleId: "M10",
+        allowPrimaryWhen: { kind: "ANY_ANSWER_ID", answerIds: ["Q1_A6"] },
+        blockedPolicy: "REMOVE_FROM_PRIMARY_CANDIDATES",
+        scope: "PRIMARY_ONLY",
+      },
+    });
+
+    expect(validatePublishableCareerSnapshot(snapshot).engineRules).toHaveLength(18);
   });
 });

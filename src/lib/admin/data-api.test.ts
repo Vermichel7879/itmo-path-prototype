@@ -105,6 +105,74 @@ describe("admin domain RPC mappings", () => {
     expect(JSON.stringify(rpc.mock.calls)).not.toContain("p_next_snapshot");
   });
 
+  it("maps module creation to one atomic RPC", async () => {
+    const { client, rpc } = rpcClient({ id: configId, updatedAt: timestamp });
+    const api = createAdminDataApi(client);
+    const values = {
+      name: "Module",
+      goal: "Goal",
+      step1: "One",
+      step2: "Two",
+      step3: "Three",
+      checkpoint: "Checkpoint",
+      constraints: "",
+      sortOrder: 42,
+      active: true,
+      forBachelor: false,
+      forMaster: true,
+    };
+
+    await api.createModule({
+      actorUserId: actorId,
+      expectedUpdatedAt: timestamp,
+      expectedSnapshotHash: hash,
+      stableId: "M42",
+      values,
+      audit: { operation: "CREATE" },
+    });
+
+    expect(rpc).toHaveBeenCalledWith("admin_create_module", {
+      p_actor_user_id: actorId,
+      p_expected_updated_at: timestamp,
+      p_expected_snapshot_hash: hash,
+      p_stable_id: "M42",
+      p_values: values,
+      p_audit: { operation: "CREATE" },
+    });
+  });
+
+  it("maps MODULE_GUARD creation to one compact atomic RPC", async () => {
+    const { client, rpc } = rpcClient({ id: configId, updatedAt: timestamp });
+    const api = createAdminDataApi(client);
+    const values = {
+      sourceTitle: "Guard",
+      sourceContent: "Explicit signal required for primary.",
+      moduleId: "M10",
+      allowPrimaryWhen: { kind: "ANY_ANSWER_ID", answerIds: ["Q1_A6"] },
+      scope: "PRIMARY_ONLY",
+      sortOrder: 18,
+      active: true,
+    };
+
+    await api.createModuleGuard({
+      actorUserId: actorId,
+      expectedUpdatedAt: timestamp,
+      expectedSnapshotHash: hash,
+      stableId: "R18",
+      values,
+      audit: { operation: "CREATE" },
+    });
+
+    expect(rpc).toHaveBeenCalledWith("admin_create_module_guard", {
+      p_actor_user_id: actorId,
+      p_expected_updated_at: timestamp,
+      p_expected_snapshot_hash: hash,
+      p_stable_id: "R18",
+      p_values: values,
+      p_audit: { operation: "CREATE" },
+    });
+  });
+
   it("maps publish to one atomic RPC with expected revision and hash", async () => {
     const { client, rpc } = rpcClient({
       id: configId,
