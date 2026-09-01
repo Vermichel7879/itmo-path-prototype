@@ -12,7 +12,7 @@ interface JourneyState {
   educationLevel: EducationLevel | null;
   sessionStatus: "IN_PROGRESS" | "COMPLETED" | "UNAVAILABLE" | null;
   answers: Record<string, string[]>;
-  currentQuestionId: string;
+  currentQuestionId: string | null;
   entrepreneurshipRevealed: boolean;
   result: TrajectoryResult | null;
 }
@@ -29,7 +29,7 @@ interface JourneyContextValue extends JourneyState {
   resetJourney: () => void;
 }
 
-const initialState: JourneyState = { configVersionId: null, sessionId: null, educationLevel: null, sessionStatus: null, answers: {}, currentQuestionId: "Q1", entrepreneurshipRevealed: false, result: null };
+const initialState: JourneyState = { configVersionId: null, sessionId: null, educationLevel: null, sessionStatus: null, answers: {}, currentQuestionId: null, entrepreneurshipRevealed: false, result: null };
 const storageKey = (configVersionId: string) => `${STORAGE_PREFIX}:${configVersionId}`;
 const JourneyContext = createContext<JourneyContextValue | null>(null);
 

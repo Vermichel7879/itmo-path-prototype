@@ -8,6 +8,7 @@ import { SiteHeader } from "@/components/ui/site-header";
 import { Toast } from "@/components/ui/toast";
 import type { PublicQuestionnaireDTO } from "@/lib/public-config/questionnaire";
 import { canContinue, toggleQuestionAnswer } from "@/lib/questionnaire/answers";
+import { resolveQuestionnairePosition } from "@/lib/questionnaire/navigation";
 import type { EducationLevel } from "@/lib/career/audience";
 import {
   publicEntryPath,
@@ -124,13 +125,15 @@ export function QuestionnaireClient({
   }, [journey.answers, questionnaire]);
   const entrepreneurshipEnabled = journey.entrepreneurshipRevealed && entrepreneurSignal;
   const sequence = useMemo(() => questionnaire?.questions.filter((question) => !question.entrepreneurshipOnly || entrepreneurshipEnabled) ?? [], [entrepreneurshipEnabled, questionnaire]);
-  const currentIndex = Math.max(0, sequence.findIndex((question) => question.id === currentQuestionId));
+  const { index: currentIndex } = resolveQuestionnairePosition(sequence, currentQuestionId);
   const question = sequence[currentIndex];
   const selected = question ? journey.answers[question.id] ?? [] : [];
   const allowContinue = question ? canContinue(question, selected) : false;
 
   useEffect(() => {
-    if (sequence.length && !sequence.some((item) => item.id === currentQuestionId)) setCurrentQuestionId("Q1");
+    if (sequence.length && !sequence.some((item) => item.id === currentQuestionId)) {
+      setCurrentQuestionId(sequence[0].id);
+    }
   }, [currentQuestionId, setCurrentQuestionId, sequence]);
 
   const dismissToast = useCallback(() => setShowEntrepreneurToast(false), []);
