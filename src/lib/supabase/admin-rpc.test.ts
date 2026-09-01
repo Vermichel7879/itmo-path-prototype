@@ -6,6 +6,7 @@ vi.mock("server-only", () => ({}));
 import {
   AdminDataApiError,
   callAdminRpc,
+  recordDataApiFailureMetric,
   type AdminRpcClient,
 } from "./admin-rpc";
 
@@ -158,9 +159,53 @@ describe("admin Data API RPC boundary", () => {
     const rejection = expect(result).rejects.toMatchObject({
       code: "ABORT_ERR",
       category: "TRANSPORT",
+      failureKind: "TIMEOUT",
     });
     await vi.runAllTimersAsync();
     await rejection;
     expect(rpc).toHaveBeenCalledTimes(2);
+  });
+
+  it("classifies network, HTTP, RPC, and invalid-response failures safely", async () => {
+    const cases = [
+      {
+        response: { data: null, error: { code: "", message: "fetch failed", details: "ECONNRESET" }, status: 0 },
+        failureKind: "NETWORK",
+      },
+      {
+        response: { data: null, error: { code: "PGRST202", message: "not found" }, status: 404 },
+        failureKind: "HTTP",
+      },
+      {
+        response: { data: null, error: { code: "P0001", message: "TRAJECTORY_SESSION_NOT_FOUND" }, status: 400 },
+        failureKind: "RPC",
+      },
+    ] as const;
+
+    for (const testCase of cases) {
+      const client: AdminRpcClient = { rpc: async () => testCase.response };
+      await expect(callAdminRpc("public_test", {}, z.unknown(), client)).rejects.toMatchObject({
+        failureKind: testCase.failureKind,
+      });
+    }
+
+    const invalidClient: AdminRpcClient = {
+      rpc: async () => ({ data: { wrong: true }, error: null, status: 200 }),
+    };
+    await expect(callAdminRpc(
+      "public_test",
+      {},
+      z.object({ ok: z.literal(true) }),
+      invalidClient,
+    )).rejects.toMatchObject({ failureKind: "RESPONSE" });
+  });
+
+  it("records only a safe failure-kind metric", () => {
+    const metrics: Record<string, number> = {};
+    recordDataApiFailureMetric(
+      metrics,
+      new AdminDataApiError("ADMIN_DATA_API_ERROR", "ECONNRESET", "TRANSPORT", "NETWORK"),
+    );
+    expect(metrics).toEqual({ data_api_failure_network: 0 });
   });
 });

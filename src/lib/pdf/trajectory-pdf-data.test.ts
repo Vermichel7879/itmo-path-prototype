@@ -95,6 +95,29 @@ describe("trajectory PDF public data policy", () => {
     expect(pdfPaceLabel("intensive")).toBe("Интенсивный темп");
   });
 
+  it("preserves complete long step text and supports 1/2 focuses with 1/2/3 recommendations", async () => {
+    const longStep = "Найти актуальные вакансии, сравнить задачи и требования, выписать повторяющиеся навыки и сохранить все выводы без сокращения. ".repeat(8).trim();
+    for (const supportCount of [1, 2]) {
+      for (const recommendationCount of [1, 2, 3]) {
+        const data = await prepareTrajectoryPdfData({
+          ...result,
+          steps: [longStep, `${longStep} Второй шаг.`, `${longStep} Третий шаг.`],
+          supportModules: result.supportModules.slice(0, supportCount),
+          recommendations: Array.from({ length: recommendationCount }, (_, index) => ({
+            id: `RESOURCE_${index + 1}`,
+            type: "GENERAL",
+            title: `Ресурс ${index + 1}`,
+            description: "Описание ресурса",
+            url: null,
+          })),
+        });
+        expect(data.steps).toEqual([longStep, `${longStep} Второй шаг.`, `${longStep} Третий шаг.`]);
+        expect(data.supportModules).toHaveLength(supportCount);
+        expect(data.resources).toHaveLength(recommendationCount);
+      }
+    }
+  });
+
   it("supports zero support modules and three approved linked resources", async () => {
     const data = await prepareTrajectoryPdfData({
       ...result,

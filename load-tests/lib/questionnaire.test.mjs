@@ -1,7 +1,10 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { buildValidAnswerPlan } from "./questionnaire.mjs";
+import {
+  buildProgressiveAnswerBatches,
+  buildValidAnswerPlan,
+} from "./questionnaire.mjs";
 
 function questionnaire({ signalFirst = false } = {}) {
   return {
@@ -64,4 +67,17 @@ test("rejects a non-MASTER questionnaire", () => {
     () => buildValidAnswerPlan({ ...questionnaire(), educationLevel: "BACHELOR" }),
     /INVALID_MASTER_QUESTIONNAIRE_DTO/,
   );
+});
+
+test("builds progressive full-set payloads in groups of three", () => {
+  const plan = Array.from({ length: 8 }, (_, index) => ({
+    questionId: `Q${index + 1}`,
+    answerOptionIds: [`Q${index + 1}_A1`],
+  }));
+  const batches = buildProgressiveAnswerBatches(plan);
+
+  assert.equal(batches.length, 3);
+  assert.deepEqual(batches.map((batch) => batch.length), [3, 6, 8]);
+  assert.deepEqual(batches.at(-1), plan);
+  assert.equal(buildProgressiveAnswerBatches([...plan, ...plan.slice(0, 2)]).length, 4);
 });

@@ -2,6 +2,24 @@ import "server-only";
 
 export type ImmutableCacheStatus = "HIT" | "MISS" | "COALESCED";
 
+export class ImmutableCacheLoadError extends Error {
+  constructor(
+    readonly cacheStatus: Extract<ImmutableCacheStatus, "MISS" | "COALESCED">,
+    readonly originalError: unknown,
+  ) {
+    super("IMMUTABLE_CACHE_LOAD_FAILED");
+    this.name = "ImmutableCacheLoadError";
+  }
+}
+
+export function immutableCacheFailureStatus(error: unknown) {
+  return error instanceof ImmutableCacheLoadError ? error.cacheStatus : null;
+}
+
+export function unwrapImmutableCacheError(error: unknown) {
+  return error instanceof ImmutableCacheLoadError ? error.originalError : error;
+}
+
 export interface ImmutableCacheRead<T> {
   value: T;
   status: ImmutableCacheStatus;
@@ -35,7 +53,11 @@ export function createImmutableVersionCache<T>(maxEntries = 64): ImmutableVersio
 
       const pending = inFlight.get(key);
       if (pending) {
-        return { value: await pending, status: "COALESCED" };
+        try {
+          return { value: await pending, status: "COALESCED" };
+        } catch (error) {
+          throw new ImmutableCacheLoadError("COALESCED", error);
+        }
       }
 
       const loading = load()
@@ -47,7 +69,11 @@ export function createImmutableVersionCache<T>(maxEntries = 64): ImmutableVersio
           inFlight.delete(key);
         });
       inFlight.set(key, loading);
-      return { value: await loading, status: "MISS" };
+      try {
+        return { value: await loading, status: "MISS" };
+      } catch (error) {
+        throw new ImmutableCacheLoadError("MISS", error);
+      }
     },
     clear() {
       values.clear();

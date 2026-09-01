@@ -42,16 +42,30 @@ interface AdminRpcErrorShape {
   hint?: string | null;
 }
 
+interface AdminRpcResponse {
+  data: unknown;
+  error: AdminRpcErrorShape | null;
+  status?: number;
+}
+
 export interface AdminRpcClient {
   rpc(
     functionName: string,
     args?: Record<string, unknown>,
-  ): PromiseLike<{ data: unknown; error: AdminRpcErrorShape | null }> & {
+  ): PromiseLike<AdminRpcResponse> & {
     abortSignal?: (
       signal: AbortSignal,
-    ) => PromiseLike<{ data: unknown; error: AdminRpcErrorShape | null }>;
+    ) => PromiseLike<AdminRpcResponse>;
   };
 }
+
+export type DataApiFailureKind =
+  | "TIMEOUT"
+  | "NETWORK"
+  | "HTTP"
+  | "RPC"
+  | "RESPONSE"
+  | "UNKNOWN";
 
 export class AdminDataApiError extends Error {
   constructor(
@@ -62,6 +76,11 @@ export class AdminDataApiError extends Error {
       : /^[0-9A-Z]{5}$/i.test(code)
         ? "POSTGRES"
         : "UNKNOWN",
+    readonly failureKind: DataApiFailureKind = category === "TRANSPORT"
+      ? code === "ABORT_ERR" ? "TIMEOUT" : "NETWORK"
+      : category === "POSTGREST" ? "HTTP"
+        : category === "POSTGRES" ? "RPC"
+          : "UNKNOWN",
   ) {
     super(message);
     this.name = "AdminDataApiError";
@@ -99,6 +118,28 @@ function errorCategory(error: AdminRpcErrorShape) {
     : "UNKNOWN";
 }
 
+function failureKind(error: AdminRpcErrorShape, status?: number): DataApiFailureKind {
+  const transportCode = extractedTransportCode(error);
+  const source = `${error.message ?? ""} ${error.details ?? ""} ${error.hint ?? ""}`;
+  if (transportCode === "ABORT_ERR" || /\baborted\b|\btimeout\b|timed\s*out/i.test(source)) {
+    return "TIMEOUT";
+  }
+  if (errorCategory(error) === "TRANSPORT") return "NETWORK";
+  const code = safeCode(error.code);
+  if (code.startsWith("PGRST")) return "HTTP";
+  if (/^[0-9A-Z]{5}$/i.test(code)) return "RPC";
+  if (status !== undefined && (status < 200 || status >= 300)) return "HTTP";
+  return "UNKNOWN";
+}
+
+export function recordDataApiFailureMetric(
+  metrics: Record<string, number>,
+  error: unknown,
+) {
+  if (!(error instanceof AdminDataApiError)) return;
+  metrics[`data_api_failure_${error.failureKind.toLowerCase()}`] = 0;
+}
+
 function sanitizedRpcMessage(value: string | null | undefined) {
   let message = value || "UNKNOWN";
   for (const secret of [
@@ -121,6 +162,7 @@ function logRpcFailure(
   startedAt: number,
   attempt: number,
   retrying: boolean,
+  status?: number,
 ) {
   const category = errorCategory(error);
   const code = safeCode(error.code) === "UNKNOWN"
@@ -132,6 +174,8 @@ function logRpcFailure(
     errorMessage: sanitizedRpcMessage(error.message),
     durationMs: Date.now() - startedAt,
     category,
+    failureKind: failureKind(error, status),
+    httpStatus: status && status > 0 ? status : undefined,
     payloadBytes: payloadBytes(args),
     attempt,
     retrying,
@@ -149,7 +193,7 @@ async function rpcAttempt(
   const controller = new AbortController();
   const abortable = request.abortSignal?.(controller.signal) ?? request;
   let timer: ReturnType<typeof setTimeout> | undefined;
-  const timeout = new Promise<{ data: null; error: AdminRpcErrorShape }>((resolve) => {
+  const timeout = new Promise<AdminRpcResponse>((resolve) => {
     timer = setTimeout(() => {
       controller.abort();
       resolve({
@@ -158,6 +202,7 @@ async function rpcAttempt(
           code: "ABORT_ERR",
           message: `Request aborted after ${timeoutMs}ms timeout`,
         },
+        status: 0,
       });
     }, timeoutMs);
   });
@@ -178,7 +223,7 @@ export async function callAdminRpc<T>(
   const maxAttempts = options.retryTransportOnce ? 2 : 1;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
     const startedAt = Date.now();
-    const { data, error } = await rpcAttempt(
+    const { data, error, status } = await rpcAttempt(
       client,
       functionName,
       args,
@@ -187,7 +232,7 @@ export async function callAdminRpc<T>(
     if (error) {
       const category = errorCategory(error);
       const retrying = category === "TRANSPORT" && attempt < maxAttempts;
-      logRpcFailure(functionName, args, error, startedAt, attempt, retrying);
+      logRpcFailure(functionName, args, error, startedAt, attempt, retrying, status);
       if (retrying) continue;
       const message =
         error.message && safeRpcMessages.has(error.message)
@@ -196,11 +241,16 @@ export async function callAdminRpc<T>(
       const code = safeCode(error.code) === "UNKNOWN"
         ? safeCode(extractedTransportCode(error))
         : safeCode(error.code);
-      throw new AdminDataApiError(message, code, category);
+      throw new AdminDataApiError(message, code, category, failureKind(error, status));
     }
     const parsed = schema.safeParse(data);
     if (!parsed.success) {
-      throw new AdminDataApiError("ADMIN_DATA_API_RESPONSE_INVALID", "INVALID_RESPONSE", "RESPONSE");
+      throw new AdminDataApiError(
+        "ADMIN_DATA_API_RESPONSE_INVALID",
+        "INVALID_RESPONSE",
+        "RESPONSE",
+        "RESPONSE",
+      );
     }
     return parsed.data;
   }

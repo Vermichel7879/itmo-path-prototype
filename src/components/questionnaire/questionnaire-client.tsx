@@ -15,6 +15,12 @@ import {
   unavailableQuestionnaireMessage,
 } from "@/lib/public-flow/entry";
 import type { TrajectoryResult } from "@/lib/rule-engine/types";
+import {
+  buildCurrentSessionAnswerSet,
+  createAnswerBatchController,
+  runAfterFinalAnswerFlush,
+  type SessionAnswerSetItem,
+} from "@/lib/trajectory/answer-batch";
 import { AnswerCards } from "./answer-cards";
 import { QuestionnaireProgress } from "./questionnaire-progress";
 
@@ -38,6 +44,18 @@ export function QuestionnaireClient({
   const startRequestInFlight = useRef(false);
   const [saving, setSaving] = useState(false);
   const entryPath = publicEntryPath(educationLevel);
+  const answerBatchController = useMemo(() => {
+    if (!journey.sessionId) return null;
+    const sessionId = journey.sessionId;
+    return createAnswerBatchController(async (answers) => {
+      const response = await fetch("/api/trajectory-sessions/answers", {
+        method: "PUT",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ sessionId, answers }),
+      });
+      if (!response.ok) throw new Error("ANSWER_SAVE_UNAVAILABLE");
+    });
+  }, [journey.sessionId]);
 
   useEffect(() => {
     if (journey.hydrated && initialConfigVersionId && !journey.configVersionId) {
@@ -117,16 +135,22 @@ export function QuestionnaireClient({
 
   const dismissToast = useCallback(() => setShowEntrepreneurToast(false), []);
 
-  async function submitTrajectory() {
-    if (!questionnaire || submitting) return;
+  async function submitTrajectory(answerSet: SessionAnswerSetItem[]) {
+    if (!questionnaire || !answerBatchController || submitting) return;
     setSubmitting(true);
     setSubmitError(false);
     try {
-      const response = await fetch("/api/trajectory", {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId: journey.sessionId, configVersionId: questionnaire.configVersionId, selectedAnswerIds: Object.values(journey.answers).flat() }),
-      });
+      const response = await runAfterFinalAnswerFlush(answerBatchController, () =>
+        fetch("/api/trajectory", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            sessionId: journey.sessionId,
+            configVersionId: questionnaire.configVersionId,
+            selectedAnswerIds: answerSet.flatMap((answer) => answer.answerOptionIds),
+          }),
+        }),
+      );
       if (!response.ok) throw new Error("TRAJECTORY_UNAVAILABLE");
       journey.setTrajectoryResult((await response.json()) as TrajectoryResult);
       journey.markSessionCompleted();
@@ -134,21 +158,27 @@ export function QuestionnaireClient({
     } catch {
       setSubmitError(true);
       setSubmitting(false);
+      setSaving(false);
     }
   }
 
+  async function persistCompletedQuestion(answerSet: SessionAnswerSetItem[]) {
+    if (!answerBatchController) throw new Error("ANSWER_SAVE_UNAVAILABLE");
+    await answerBatchController.recordCompleted(answerSet);
+  }
+
   async function handleContinue() {
-    if (!question || !allowContinue) return;
+    if (!question || !allowContinue || !questionnaire) return;
     if (!journey.sessionId) return;
+    const answerSet = buildCurrentSessionAnswerSet(
+      journey.answers,
+      questionnaire,
+      entrepreneurshipEnabled,
+    );
     setSaving(true);
     setSubmitError(false);
     try {
-      const saveResponse = await fetch("/api/trajectory-sessions/answers", {
-        method: "PUT",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ sessionId: journey.sessionId, questionId: question.id, answerOptionIds: selected }),
-      });
-      if (!saveResponse.ok) throw new Error("ANSWER_SAVE_UNAVAILABLE");
+      await persistCompletedQuestion(answerSet);
     } catch {
       setSubmitError(true);
       setSaving(false);
@@ -158,7 +188,16 @@ export function QuestionnaireClient({
       if (entrepreneurSignal && !journey.entrepreneurshipRevealed) {
         journey.setEntrepreneurshipRevealed(true);
         setShowEntrepreneurToast(true);
-      } else if (!entrepreneurSignal) journey.setEntrepreneurshipRevealed(false);
+      } else if (!entrepreneurSignal) {
+        journey.setEntrepreneurshipRevealed(false);
+        for (const branchQuestion of questionnaire.questions.filter(
+          (item) => item.entrepreneurshipOnly,
+        )) {
+          if ((journey.answers[branchQuestion.id] ?? []).length > 0) {
+            journey.setQuestionAnswers(branchQuestion.id, []);
+          }
+        }
+      }
       journey.setCurrentQuestionId("Q6");
       setSaving(false);
       return;
@@ -167,7 +206,7 @@ export function QuestionnaireClient({
     if (nextQuestion) {
       journey.setCurrentQuestionId(nextQuestion.id);
       setSaving(false);
-    } else await submitTrajectory();
+    } else await submitTrajectory(answerSet);
   }
 
   if (journey.hydrated && !journey.sessionId) return <LandingPage onStart={startJourney} starting={starting} startError={startError} />;

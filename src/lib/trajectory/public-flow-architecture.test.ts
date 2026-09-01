@@ -18,10 +18,12 @@ describe("public trajectory flow architecture", () => {
     expect(start).not.toMatch(/by[-_/]isu/i);
   });
 
-  it("persists each question before moving forward and completes through one atomic RPC", () => {
+  it("batches current answers and completes only after the final flush", () => {
     const client = readFileSync(resolve("src/components/questionnaire/questionnaire-client.tsx"), "utf8");
     const route = readFileSync(resolve("src/app/api/trajectory/route.ts"), "utf8");
     expect(client).toContain("/api/trajectory-sessions/answers");
+    expect(client).toContain("createAnswerBatchController");
+    expect(client).toContain("runAfterFinalAnswerFlush");
     expect(route).toContain("trajectoryDataApi.complete");
     expect(route).toContain("buildTrajectoryCompletionPayload");
   });
@@ -40,5 +42,17 @@ describe("public trajectory flow architecture", () => {
     expect(draft).not.toContain("immutable-version-cache");
     expect(preview).not.toContain("immutable-version-cache");
     expect(preview).not.toContain("readPinnedEngineConfig");
+  });
+
+  it("exposes safe Data API failure metrics on every public flow route", () => {
+    for (const routePath of [
+      "src/app/api/trajectory-sessions/route.ts",
+      "src/app/api/questionnaire/route.ts",
+      "src/app/api/trajectory-sessions/answers/route.ts",
+      "src/app/api/trajectory/route.ts",
+    ]) {
+      const route = readFileSync(resolve(routePath), "utf8");
+      expect(route).toContain("recordDataApiFailureMetric");
+    }
   });
 });

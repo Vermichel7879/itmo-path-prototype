@@ -71,6 +71,13 @@
       "when": 1788143210743,
       "tag": "0009_public-pinned-questionnaire",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1788216608454,
+      "tag": "0010_batch-session-answer-set",
+      "breakpoints": true
     }
   ]
 }

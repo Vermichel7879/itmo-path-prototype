@@ -216,4 +216,34 @@ describe("trajectory session Data API", () => {
     await api.replaceAnswers({ sessionId: "00000000-0000-4000-8000-000000000103", questionId: "Q2", answerOptionIds: ["Q2_A2"] });
     expect(calls[0]).toMatchObject({ name: "public_replace_session_answers", args: { p_question_id: "Q2", p_answer_option_ids: ["Q2_A2"] } });
   });
+
+  it("replaces a full answer set through one RPC before unchanged completion", async () => {
+    const calls: Array<{ name: string; args: Record<string, unknown> }> = [];
+    const api = createTrajectoryDataApi(clientWith((name, args) => {
+      calls.push({ name, args });
+      return { ok: true };
+    }));
+    const sessionId = "00000000-0000-4000-8000-000000000103";
+    const answers = [
+      { questionId: "Q1", answerOptionIds: ["Q1_A1"] },
+      { questionId: "Q2", answerOptionIds: ["Q2_A2"] },
+    ];
+
+    await api.replaceAnswerSet({ sessionId, answers });
+    await api.complete({
+      sessionId,
+      selectedAnswerIds: ["Q1_A1", "Q2_A2"],
+      payload: {} as never,
+    });
+
+    expect(calls).toHaveLength(2);
+    expect(calls[0]).toEqual({
+      name: "public_replace_session_answer_set",
+      args: { p_session_id: sessionId, p_answers: answers },
+    });
+    expect(calls[1]).toMatchObject({
+      name: "public_complete_trajectory_session",
+      args: { p_selected_answer_ids: ["Q1_A1", "Q2_A2"] },
+    });
+  });
 });

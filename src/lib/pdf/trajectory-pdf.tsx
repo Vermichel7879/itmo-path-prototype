@@ -22,6 +22,7 @@ const TEXT = "#151517";
 const MUTED = "#5b6067";
 const LINE = "#bfc3c8";
 const A4 = { width: 595.28, height: 841.89 } as const;
+const KEEP_TOGETHER_TEXT_LIMIT = 900;
 let registeredFontSource: string | null = null;
 
 function registerPdfAssets(fontSrc: string) {
@@ -49,13 +50,12 @@ const styles = StyleSheet.create({
     minHeight: A4.height,
     paddingTop: 34,
     paddingRight: 42,
-    paddingBottom: 36,
+    paddingBottom: 44,
     paddingLeft: 42,
     backgroundColor: "#ffffff",
     color: TEXT,
     fontFamily: "Golos Text PDF",
     fontSize: 9.6,
-    lineHeight: 1.38,
   },
   pageBody: { flexGrow: 1 },
   header: {
@@ -134,59 +134,25 @@ const styles = StyleSheet.create({
   previewIndex: { width: 24, fontSize: 8.6, fontWeight: 700, color: ACCENT },
   previewText: { flexGrow: 1, fontSize: 9.2, lineHeight: 1.32 },
   previewFinish: { marginTop: 2, fontSize: 8.5, fontWeight: 700, color: MUTED },
-  page2Intro: { marginBottom: 13 },
   stepCard: {
-    flexGrow: 1,
-    marginBottom: 10,
-    borderTopWidth: 0.8,
-    borderTopColor: TEXT,
-    borderBottomWidth: 0.8,
-    borderBottomColor: LINE,
-    paddingVertical: 11,
+    marginBottom: 14,
   },
-  stepTop: { flexDirection: "row" },
-  stepNumber: { width: 37, fontSize: 20, lineHeight: 1, fontWeight: 700, color: ACCENT },
-  stepContent: { flexGrow: 1, paddingRight: 2 },
-  stepLabel: { marginBottom: 4, fontSize: 8, fontWeight: 700, letterSpacing: 0.9, color: MUTED },
-  stepText: { fontSize: 10, lineHeight: 1.4, fontWeight: 700 },
-  placeholderGrid: { marginTop: 10, flexDirection: "row", gap: 7 },
-  placeholder: {
-    flexGrow: 1,
-    flexBasis: 0,
-    minHeight: 76,
-    borderWidth: 0.8,
-    borderStyle: "dashed",
-    borderColor: "#b9bdc4",
-    borderRadius: 0,
-    padding: 7,
-    backgroundColor: "#ffffff",
-  },
-  placeholderTitle: { fontSize: 8.4, fontWeight: 700, color: "#45484d" },
-  placeholderBadge: {
-    alignSelf: "flex-start",
-    marginTop: 4,
-    marginBottom: 4,
-    paddingVertical: 2,
-    paddingHorizontal: 4,
-    borderRadius: 3,
-    backgroundColor: "#e2e4e8",
-    fontSize: 6.8,
+  stepDividerTop: { height: 0.8, backgroundColor: TEXT },
+  stepDividerBottom: { height: 0.8, backgroundColor: LINE },
+  stepBody: { position: "relative", paddingTop: 14, paddingBottom: 14, paddingLeft: 37 },
+  stepNumber: {
+    position: "absolute",
+    top: 14,
+    left: 0,
+    width: 31,
+    fontSize: 20,
+    lineHeight: 1,
     fontWeight: 700,
-    color: "#686c73",
+    color: ACCENT,
   },
-  placeholderText: { fontSize: 7.2, lineHeight: 1.28, color: "#777b82" },
-  resourcePlaceholderRow: { marginTop: 4, flexDirection: "row", alignItems: "center" },
-  qrPlaceholder: {
-    width: 29,
-    height: 29,
-    marginRight: 6,
-    borderWidth: 0.8,
-    borderColor: "#b9bdc4",
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: "#ffffff",
-  },
-  qrPlaceholderText: { fontSize: 6.6, fontWeight: 700, color: "#8a8e95" },
+  stepContent: { paddingRight: 2 },
+  stepLabel: { marginBottom: 4, fontSize: 8, fontWeight: 700, letterSpacing: 0.9, color: MUTED },
+  stepText: { fontSize: 10.4, lineHeight: 1.48, fontWeight: 400 },
   supportSection: { marginTop: 1 },
   supportGrid: { marginTop: 10, flexDirection: "row", gap: 9 },
   supportCard: {
@@ -218,12 +184,12 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   resourceCopy: { flexGrow: 1, flexBasis: 0, paddingRight: 10 },
+  resourceCopyFull: { paddingRight: 0 },
   resourceType: { fontSize: 7.2, fontWeight: 700, letterSpacing: 0.8, color: ACCENT },
   resourceTitle: { marginTop: 3, fontSize: 10, fontWeight: 700, color: TEXT },
   resourceDescription: { marginTop: 3, fontSize: 7.8, lineHeight: 1.3, color: MUTED },
   resourceLink: { textDecoration: "none", color: TEXT },
   qr: { width: 68, height: 68, objectFit: "contain" },
-  noQr: { fontSize: 7.5, color: "#8b8e94" },
   noResources: {
     marginTop: 9,
     borderTopWidth: 0.8,
@@ -231,20 +197,19 @@ const styles = StyleSheet.create({
     borderBottomWidth: 0.8,
     borderBottomColor: LINE,
     paddingVertical: 12,
+    lineHeight: 1.35,
     color: MUTED,
   },
-  page3Bottom: { marginTop: 12, flexDirection: "row", gap: 9 },
   paceCard: {
-    width: "35%",
+    marginTop: 14,
     borderTopWidth: 0.8,
     borderTopColor: TEXT,
-    paddingVertical: 11,
-    paddingRight: 10,
+    paddingTop: 11,
+    paddingBottom: 11,
   },
   paceLabel: { marginTop: 7, fontSize: 12, fontWeight: 700 },
   paceText: { marginTop: 4, fontSize: 8.2, lineHeight: 1.35, color: MUTED },
   checkpointCard: {
-    width: "63%",
     borderRadius: 0,
     padding: 12,
     backgroundColor: ACCENT,
@@ -253,7 +218,8 @@ const styles = StyleSheet.create({
   checkpointEyebrow: { fontSize: 8.1, fontWeight: 700, letterSpacing: 1, color: "#d8e8ff" },
   checkpointHeading: { marginTop: 5, fontSize: 15, fontWeight: 700 },
   checkpointText: { marginTop: 7, fontSize: 9.2, lineHeight: 1.38, color: "#ffffff" },
-  disclaimer: { marginTop: 9, fontSize: 7.8, lineHeight: 1.35, color: MUTED },
+  finalKeepTogether: { marginTop: 12 },
+  disclaimer: { marginTop: 12, fontSize: 7.8, lineHeight: 1.35, color: MUTED },
 });
 
 function Header({ logoSrc }: { logoSrc: string }) {
@@ -269,11 +235,11 @@ function Header({ logoSrc }: { logoSrc: string }) {
   );
 }
 
-function Footer({ page }: { page: 1 | 2 | 3 }) {
+function Footer() {
   return (
     <View style={styles.footer} fixed>
       <Text>Центр карьеры ИТМО</Text>
-      <Text>{page} / 3</Text>
+      <Text render={({ pageNumber, totalPages }) => `${pageNumber} / ${totalPages}`} />
     </View>
   );
 }
@@ -288,7 +254,7 @@ function PreviewRoute({ steps }: { steps: [string, string, string] }) {
         <Text style={styles.previewText}>Сейчас</Text>
       </View>
       {steps.map((step, index) => (
-        <View style={styles.previewRow} key={step}>
+        <View style={styles.previewRow} key={`${index}-${step}`}>
           <View style={styles.previewRail}><View style={styles.previewDot} />{index < 2 ? <View style={styles.previewLine} /> : null}</View>
           <Text style={styles.previewIndex}>{String(index + 1).padStart(2, "0")}</Text>
           <Text style={styles.previewText}>{compactPdfPreviewText(step)}</Text>
@@ -299,69 +265,32 @@ function PreviewRoute({ steps }: { steps: [string, string, string] }) {
   );
 }
 
-function Placeholder({ type }: { type: "how" | "outcome" | "resource" }) {
-  const copy = {
-    how: {
-      title: "Как сделать",
-      text: "Здесь будет подробная инструкция по выполнению шага.",
-    },
-    outcome: {
-      title: "Что должно получиться",
-      text: "Здесь будет понятный критерий завершения шага.",
-    },
-    resource: {
-      title: "Полезный ресурс",
-      text: "Название ресурса и короткое описание.",
-    },
-  }[type];
-  return (
-    <View style={styles.placeholder}>
-      <Text style={styles.placeholderTitle}>{copy.title}</Text>
-      <Text style={styles.placeholderBadge}>ЗАГЛУШКА</Text>
-      {type === "resource" ? (
-        <View style={styles.resourcePlaceholderRow}>
-          <View style={styles.qrPlaceholder}><Text style={styles.qrPlaceholderText}>QR</Text></View>
-          <Text style={styles.placeholderText}>{copy.text}</Text>
-        </View>
-      ) : (
-        <Text style={styles.placeholderText}>{copy.text}</Text>
-      )}
-    </View>
-  );
-}
-
 function StepCard({ index, step }: { index: number; step: string }) {
+  const canSplitAcrossPages = step.length > KEEP_TOGETHER_TEXT_LIMIT;
   return (
-    <View style={styles.stepCard} wrap={false}>
-      <View style={styles.stepTop}>
+    <View style={styles.stepCard} wrap={canSplitAcrossPages}>
+      <View style={styles.stepDividerTop} />
+      <View style={styles.stepBody}>
         <Text style={styles.stepNumber}>{String(index + 1).padStart(2, "0")}</Text>
         <View style={styles.stepContent}>
-          <Text style={styles.stepLabel}>БЛИЖАЙШЕЕ ДЕЙСТВИЕ</Text>
-          <Text style={styles.stepText}>{step}</Text>
+          <Text style={styles.stepLabel}>ШАГ {index + 1}</Text>
+          <Text style={styles.stepText} orphans={3} widows={3}>{step}</Text>
         </View>
       </View>
-      <View style={styles.placeholderGrid}>
-        <Placeholder type="how" />
-        <Placeholder type="outcome" />
-        <Placeholder type="resource" />
-      </View>
+      <View style={styles.stepDividerBottom} />
     </View>
   );
 }
 
 function ResourceCard({ resource }: { resource: TrajectoryPdfResource }) {
   const card = (
-    <View style={styles.resourceCard}>
-      <View style={styles.resourceCopy}>
+    <View style={styles.resourceCard} wrap={false}>
+      <View style={[styles.resourceCopy, resource.qrDataUrl ? undefined : styles.resourceCopyFull]}>
         <Text style={styles.resourceType}>ПОЛЕЗНЫЙ РЕСУРС</Text>
         <Text style={styles.resourceTitle}>{resource.title}</Text>
         <Text style={styles.resourceDescription}>{resource.description}</Text>
       </View>
-      {resource.qrDataUrl ? (
-        <Image src={resource.qrDataUrl} style={styles.qr} />
-      ) : (
-        <Text style={styles.noQr}>Без ссылки</Text>
-      )}
+      {resource.qrDataUrl ? <Image src={resource.qrDataUrl} style={styles.qr} /> : null}
     </View>
   );
   return resource.href ? (
@@ -408,25 +337,18 @@ export function TrajectoryPdfDocument({
           </View>
           <PreviewRoute steps={data.steps} />
         </View>
-        <Footer page={1} />
+        <Footer />
       </Page>
 
-      <Page size={A4} style={styles.page} wrap={false}>
+      <Page size={A4} style={styles.page}>
         <Header logoSrc={assets.logoSrc} />
-        <View style={[styles.pageBody, styles.page2Intro]}>
+        <View>
           <Text style={styles.eyebrow}>ГЛАВНАЯ ЧАСТЬ МАРШРУТА</Text>
           <Text style={styles.sectionHeading}>3 ближайших шага</Text>
           <Text style={styles.sectionSubtitle}>Не пытайтесь сделать всё сразу. Начните с этих трёх действий.</Text>
-          <View style={{ marginTop: 14, flexGrow: 1 }}>
+          <View style={{ marginTop: 14 }}>
             {data.steps.map((step, index) => <StepCard key={`${index}-${step}`} index={index} step={step} />)}
           </View>
-        </View>
-        <Footer page={2} />
-      </Page>
-
-      <Page size={A4} style={styles.page} wrap={false}>
-        <Header logoSrc={assets.logoSrc} />
-        <View style={styles.pageBody}>
           <View style={styles.supportSection}>
             <Text style={styles.eyebrow}>ДОПОЛНИТЕЛЬНЫЙ ФОКУС</Text>
             <Text style={styles.sectionHeading}>Что ещё держать в фокусе</Text>
@@ -455,21 +377,24 @@ export function TrajectoryPdfDocument({
             )}
           </View>
 
-          <View style={styles.page3Bottom}>
-            <View style={styles.paceCard}>
-              <Text style={styles.eyebrow}>ВАШ ТЕМП</Text>
-              <Text style={styles.paceLabel}>{data.paceLabel}</Text>
-              <Text style={styles.paceText}>{data.pace?.text ?? "Темп уточнится после первых действий."}</Text>
-            </View>
+          <View
+            style={styles.paceCard}
+            wrap={(data.pace?.text?.length ?? 0) > KEEP_TOGETHER_TEXT_LIMIT}
+          >
+            <Text style={styles.eyebrow}>ВАШ ТЕМП</Text>
+            <Text style={styles.paceLabel}>{data.paceLabel}</Text>
+            <Text style={styles.paceText}>{data.pace?.text ?? "Темп уточнится после первых действий."}</Text>
+          </View>
+          <View style={styles.finalKeepTogether} wrap={false}>
             <View style={styles.checkpointCard}>
               <Text style={styles.checkpointEyebrow}>ЧЕРЕЗ 2–4 НЕДЕЛИ</Text>
               <Text style={styles.checkpointHeading}>У вас должно быть:</Text>
               <Text style={styles.checkpointText}>{data.checkpoint}</Text>
             </View>
+            <Text style={styles.disclaimer} orphans={2} widows={2}>{data.disclaimer}</Text>
           </View>
-          <Text style={styles.disclaimer}>{data.disclaimer}</Text>
         </View>
-        <Footer page={3} />
+        <Footer />
       </Page>
     </Document>
   );

@@ -8,7 +8,14 @@ import {
 } from "@/lib/rule-engine/validate-selection";
 import { filterCareerConfigByAudience } from "@/lib/career/audience";
 import { readPinnedEngineConfig } from "@/lib/public-config/engine-config-read";
-import { AdminDataApiError } from "@/lib/supabase/admin-rpc";
+import {
+  immutableCacheFailureStatus,
+  unwrapImmutableCacheError,
+} from "@/lib/public-config/immutable-version-cache";
+import {
+  AdminDataApiError,
+  recordDataApiFailureMetric,
+} from "@/lib/supabase/admin-rpc";
 import { trajectoryDataApi } from "@/lib/trajectory/data-api";
 import { buildTrajectoryCompletionPayload } from "@/lib/trajectory/persistence";
 import {
@@ -56,16 +63,21 @@ export async function POST(request: Request) {
       trajectoryDataApi,
     ).catch((error) => {
       const duration = Date.now() - configReadStartedAt;
+      const cacheStatus = immutableCacheFailureStatus(error) ?? "MISS";
       serverTimings.config_read = duration;
-      serverTimings.data_api = (serverTimings.data_api ?? 0) + duration;
-      serverTimings.config_cache_miss = 0;
-      throw error;
+      if (cacheStatus === "MISS") {
+        serverTimings.data_api = (serverTimings.data_api ?? 0) + duration;
+        serverTimings.config_cache_load_failure = 0;
+      }
+      serverTimings[`config_cache_${cacheStatus.toLowerCase()}`] = 0;
+      throw unwrapImmutableCacheError(error);
     });
     timings.pinnedConfigRead = Date.now() - stageStartedAt;
     serverTimings.config_read = engineRead.timing.totalMs;
     serverTimings.data_api = (serverTimings.data_api ?? 0) + engineRead.timing.dataApiReadMs;
     serverTimings.validation = engineRead.timing.validationMs;
     serverTimings[`config_cache_${engineRead.timing.cacheStatus.toLowerCase()}`] = 0;
+    if (engineRead.timing.cacheStatus === "MISS") serverTimings.config_cache_load_success = 0;
     if (!engineRead.config) {
       return respond({ error: "CONFIG_VERSION_NOT_PUBLISHED" }, 409);
     }
@@ -128,6 +140,7 @@ export async function POST(request: Request) {
       return respond({ error: error.code, questionId: error.questionId }, 422);
     }
     if (!(stage in timings)) timings[stage] = Date.now() - stageStartedAt;
+    recordDataApiFailureMetric(serverTimings, error);
     console.error("[TRAJECTORY_FAILED]", {
       stage,
       errorCategory: error instanceof AdminDataApiError ? error.category : "APPLICATION",

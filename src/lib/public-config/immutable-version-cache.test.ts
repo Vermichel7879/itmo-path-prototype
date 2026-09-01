@@ -2,7 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 
 vi.mock("server-only", () => ({}));
 
-import { createImmutableVersionCache } from "./immutable-version-cache";
+import {
+  createImmutableVersionCache,
+  ImmutableCacheLoadError,
+} from "./immutable-version-cache";
 
 describe("immutable published version cache", () => {
   it("returns MISS first and HIT for the same version afterward", async () => {
@@ -38,7 +41,10 @@ describe("immutable published version cache", () => {
       .mockRejectedValueOnce(new Error("transport"))
       .mockResolvedValueOnce("recovered");
 
-    await expect(cache.read("engine:v1", load)).rejects.toThrow("transport");
+    await expect(cache.read("engine:v1", load)).rejects.toMatchObject({
+      cacheStatus: "MISS",
+      originalError: expect.objectContaining({ message: "transport" }),
+    });
     await expect(cache.read("engine:v1", load)).resolves.toEqual({
       value: "recovered",
       status: "MISS",
@@ -59,6 +65,28 @@ describe("immutable published version cache", () => {
 
     await expect(first).resolves.toEqual({ value: "shared", status: "MISS" });
     await expect(second).resolves.toEqual({ value: "shared", status: "COALESCED" });
+    expect(load).toHaveBeenCalledTimes(1);
+  });
+
+  it("preserves MISS versus COALESCED when one shared load fails", async () => {
+    const cache = createImmutableVersionCache<string>();
+    let rejectLoad!: (error: Error) => void;
+    const load = vi.fn(() => new Promise<string>((_resolve, reject) => {
+      rejectLoad = reject;
+    }));
+
+    const owner = cache.read("engine:v1", load);
+    const follower = cache.read("engine:v1", load);
+    rejectLoad(new Error("transport"));
+
+    await expect(owner).rejects.toEqual(expect.objectContaining({
+      name: "ImmutableCacheLoadError",
+      cacheStatus: "MISS",
+    } satisfies Partial<ImmutableCacheLoadError>));
+    await expect(follower).rejects.toEqual(expect.objectContaining({
+      name: "ImmutableCacheLoadError",
+      cacheStatus: "COALESCED",
+    } satisfies Partial<ImmutableCacheLoadError>));
     expect(load).toHaveBeenCalledTimes(1);
   });
 });

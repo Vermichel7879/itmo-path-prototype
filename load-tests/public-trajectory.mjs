@@ -3,7 +3,10 @@ import exec from "k6/execution";
 import { check, fail, sleep } from "k6";
 import { Counter, Rate, Trend } from "k6/metrics";
 
-import { buildValidAnswerPlan } from "./lib/questionnaire.mjs";
+import {
+  buildProgressiveAnswerBatches,
+  buildValidAnswerPlan,
+} from "./lib/questionnaire.mjs";
 
 const PROFILE = __ENV.PROFILE || "smoke";
 const BASE_URL = (__ENV.BASE_URL || "http://127.0.0.1:3000").replace(/\/$/, "");
@@ -76,6 +79,7 @@ const selectedScenario = MANUAL_VUS === null ? profiles[PROFILE] : {
 const sessionStartDuration = new Trend("session_start_duration", true);
 const questionnaireDuration = new Trend("questionnaire_duration", true);
 const answerSaveDuration = new Trend("answer_save_duration", true);
+const answerSaveRequestsPerFlow = new Trend("answer_save_requests_per_flow");
 const trajectoryResultDuration = new Trend("trajectory_result_duration", true);
 const flowErrors = new Rate("flow_error_rate");
 const serverTotalDuration = new Trend("server_total_duration", true);
@@ -88,6 +92,28 @@ const serverCompletionWriteDuration = new Trend("server_completion_write_duratio
 const configCacheHits = new Counter("config_cache_hits");
 const configCacheMisses = new Counter("config_cache_misses");
 const configCacheCoalesced = new Counter("config_cache_coalesced");
+const configCacheLoadSuccess = new Counter("config_cache_load_success");
+const configCacheLoadFailure = new Counter("config_cache_load_failure");
+const dataApiFailureTimeout = new Counter("data_api_failure_timeout");
+const dataApiFailureNetwork = new Counter("data_api_failure_network");
+const dataApiFailureHttp = new Counter("data_api_failure_http");
+const dataApiFailureRpc = new Counter("data_api_failure_rpc");
+const dataApiFailureResponse = new Counter("data_api_failure_response");
+const dataApiFailureUnknown = new Counter("data_api_failure_unknown");
+
+const serverTimingCounters = {
+  config_cache_hit: configCacheHits,
+  config_cache_miss: configCacheMisses,
+  config_cache_coalesced: configCacheCoalesced,
+  config_cache_load_success: configCacheLoadSuccess,
+  config_cache_load_failure: configCacheLoadFailure,
+  data_api_failure_timeout: dataApiFailureTimeout,
+  data_api_failure_network: dataApiFailureNetwork,
+  data_api_failure_http: dataApiFailureHttp,
+  data_api_failure_rpc: dataApiFailureRpc,
+  data_api_failure_response: dataApiFailureResponse,
+  data_api_failure_unknown: dataApiFailureUnknown,
+};
 
 const serverTimingMetrics = {
   total: serverTotalDuration,
@@ -141,9 +167,8 @@ function recordServerTiming(response, endpoint) {
   for (const entry of header.split(",")) {
     const match = entry.trim().match(/^([a-z][a-z0-9_]*);dur=([0-9]+(?:\.[0-9]+)?)$/);
     if (!match) continue;
-    if (match[1] === "config_cache_hit") configCacheHits.add(1, { endpoint });
-    if (match[1] === "config_cache_miss") configCacheMisses.add(1, { endpoint });
-    if (match[1] === "config_cache_coalesced") configCacheCoalesced.add(1, { endpoint });
+    const counter = serverTimingCounters[match[1]];
+    if (counter) counter.add(1, { endpoint });
     const metric = serverTimingMetrics[match[1]];
     if (metric) metric.add(Number(match[2]), { endpoint });
   }
@@ -202,14 +227,18 @@ export default function publicTrajectoryFlow() {
     stop("ANSWER_PLAN");
   }
 
-  for (const answer of answerPlan) {
-    think();
+  const answerBatches = buildProgressiveAnswerBatches(answerPlan, 3);
+  let completedQuestionCount = 0;
+  for (const answers of answerBatches) {
+    while (completedQuestionCount < answers.length) {
+      think();
+      completedQuestionCount += 1;
+    }
     const saveResponse = http.put(
       `${BASE_URL}/api/trajectory-sessions/answers`,
       JSON.stringify({
         sessionId: session.sessionId,
-        questionId: answer.questionId,
-        answerOptionIds: answer.answerOptionIds,
+        answers,
       }),
       requestParams("ANSWER_SAVE"),
     );
@@ -219,6 +248,7 @@ export default function publicTrajectoryFlow() {
       "answer save returns 200": (response) => response.status === 200,
     })) stop("ANSWER_SAVE");
   }
+  answerSaveRequestsPerFlow.add(answerBatches.length);
 
   think();
   const selectedAnswerIds = answerPlan.flatMap((answer) => answer.answerOptionIds);

@@ -154,6 +154,19 @@ export function createTrajectoryDataApi(client?: AdminRpcClient) {
         mutationResultSchema,
       );
     },
+    replaceAnswerSet(input: {
+      sessionId: string;
+      answers: Array<{ questionId: string; answerOptionIds: string[] }>;
+    }) {
+      return rpc(
+        "public_replace_session_answer_set",
+        {
+          p_session_id: input.sessionId,
+          p_answers: input.answers,
+        },
+        mutationResultSchema,
+      );
+    },
     complete(input: {
       sessionId: string;
       selectedAnswerIds: string[];

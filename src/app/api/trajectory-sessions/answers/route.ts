@@ -1,20 +1,24 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
+import { sessionAnswerSetSaveSchema } from "@/lib/trajectory/answer-batch";
 import { trajectoryDataApi } from "@/lib/trajectory/data-api";
+import { recordDataApiFailureMetric } from "@/lib/supabase/admin-rpc";
 import {
   measureServerTiming,
   type ServerTimingMetrics,
   withServerTiming,
 } from "@/lib/http/server-timing";
 
-const answerSaveSchema = z
+const singleAnswerSaveSchema = z
   .object({
     sessionId: z.uuid(),
     questionId: z.string().trim().min(1),
     answerOptionIds: z.array(z.string().trim().min(1)).max(75),
   })
   .strict();
+
+const answerSaveSchema = z.union([singleAnswerSaveSchema, sessionAnswerSetSaveSchema]);
 
 export async function PUT(request: Request) {
   const requestStartedAt = Date.now();
@@ -29,13 +33,14 @@ export async function PUT(request: Request) {
     if (!parsed.success) {
       return respond({ error: "INVALID_ANSWER_DATA" }, 400);
     }
-    await measureServerTiming(
-      timings,
-      ["session_write", "data_api"],
-      () => trajectoryDataApi.replaceAnswers(parsed.data),
+    await measureServerTiming(timings, ["session_write", "data_api"], () =>
+      "answers" in parsed.data
+        ? trajectoryDataApi.replaceAnswerSet(parsed.data)
+        : trajectoryDataApi.replaceAnswers(parsed.data),
     );
     return respond({ ok: true });
-  } catch {
+  } catch (error) {
+    recordDataApiFailureMetric(timings, error);
     return respond({ error: "ANSWER_SAVE_UNAVAILABLE" }, 503);
   }
 }

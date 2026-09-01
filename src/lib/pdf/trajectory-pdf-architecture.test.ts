@@ -52,6 +52,48 @@ describe("trajectory PDF architecture", () => {
     expect(document).not.toMatch(/\.scores\b|\.weight\b|\.debug\b/);
   });
 
+  it("renders each complete step without the old auxiliary placeholder sections", () => {
+    const document = readFileSync(
+      resolve("src/lib/pdf/trajectory-pdf.tsx"),
+      "utf8",
+    );
+    const stepCard = document.slice(
+      document.indexOf("function StepCard"),
+      document.indexOf("function ResourceCard"),
+    );
+    expect(stepCard).toContain("{step}");
+    expect(stepCard).toContain("wrap={canSplitAcrossPages}");
+    expect(stepCard).toContain("orphans={3}");
+    expect(stepCard).toContain("styles.stepDividerBottom");
+    expect(stepCard).not.toContain("compactPdfPreviewText");
+    expect(stepCard).not.toMatch(/Как сделать|Что должно получиться|Полезный ресурс|ЗАГЛУШКА|Placeholder/);
+    expect(document).not.toContain("function Placeholder");
+    expect(document).toContain("{data.checkpoint}");
+    expect(document).toContain("data.resources.map");
+  });
+
+  it("lets final content paginate above a reserved dynamic footer", () => {
+    const document = readFileSync(
+      resolve("src/lib/pdf/trajectory-pdf.tsx"),
+      "utf8",
+    );
+    expect(document).toContain("paddingBottom: 44");
+    expect(document).toContain("<Page size={A4} style={styles.page}>");
+    expect(document.match(/<Page size=\{A4\}/g)).toHaveLength(2);
+    expect(document).toContain("<View style={styles.finalKeepTogether} wrap={false}>");
+    expect(document).not.toContain("minPresenceAhead={100}");
+  });
+
+  it("does not render or reserve a no-link label", () => {
+    const document = readFileSync(
+      resolve("src/lib/pdf/trajectory-pdf.tsx"),
+      "utf8",
+    );
+    expect(document).not.toContain("Без ссылки");
+    expect(document).toContain("styles.resourceCopyFull");
+    expect(document).toContain("resource.qrDataUrl ? <Image");
+  });
+
   it("uses the replaceable project branding asset in website and PDF headers", () => {
     const websiteHeader = readFileSync(
       resolve("src/components/ui/site-header.tsx"),

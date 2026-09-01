@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 
-import { AdminDataApiError } from "@/lib/supabase/admin-rpc";
+import {
+  AdminDataApiError,
+  recordDataApiFailureMetric,
+} from "@/lib/supabase/admin-rpc";
 import { trajectoryDataApi } from "@/lib/trajectory/data-api";
 import {
   measureServerTiming,
@@ -53,6 +56,7 @@ export async function POST(request: Request) {
     );
     return respond(session, 201);
   } catch (error) {
+    recordDataApiFailureMetric(timings, error);
     console.error("[SESSION_START_FAILED]", {
       action: stage,
       errorCode: error instanceof AdminDataApiError ? error.code : "UNKNOWN",

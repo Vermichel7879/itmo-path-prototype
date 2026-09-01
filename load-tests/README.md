@@ -17,6 +17,15 @@
 k6 run -e PROFILE=smoke -e BASE_URL=http://127.0.0.1:3000 -e TEST_ISU_PREFIX=990000000 load-tests/public-trajectory.mjs
 ```
 
+Remote smoke для Amvera (замените placeholder на домен своего приложения):
+
+```powershell
+k6 run -e PROFILE=smoke -e 'BASE_URL=https://<amvera-domain>' -e TEST_ISU_PREFIX=990000000 load-tests/public-trajectory.mjs
+```
+
+Нагрузочный тест разрешено запускать только против собственного согласованного
+test/staging-окружения. Профили `target` и `spike` нельзя запускать против Production.
+
 Профили нагрузки:
 
 ```powershell
@@ -47,6 +56,7 @@ k6 выводит `http_reqs` (включая requests/sec), `http_req_failed`, 
 - `session_start_duration`;
 - `questionnaire_duration`;
 - `answer_save_duration`;
+- `answer_save_requests_per_flow` (ожидаемо 3 для 8 вопросов и 4 для 10);
 - `trajectory_result_duration`;
 - `flow_error_rate`.
 
@@ -59,6 +69,8 @@ k6 выводит `http_reqs` (включая requests/sec), `http_req_failed`, 
 - `server_rule_engine_duration`;
 - `server_completion_write_duration`.
 - `config_cache_hits` / `config_cache_misses` / `config_cache_coalesced`.
+- `config_cache_load_success` / `config_cache_load_failure`;
+- `data_api_failure_timeout` / `network` / `http` / `rpc` / `response` / `unknown`.
 
 В браузере значения видны в Network → конкретный запрос → Response Headers → `Server-Timing`. В k6 у server metrics есть tag `endpoint` со значениями `SESSION_START`, `QUESTIONNAIRE`, `ANSWER_SAVE`, `TRAJECTORY_RESULT`.
 
@@ -66,20 +78,20 @@ k6 выводит `http_reqs` (включая requests/sec), `http_req_failed`, 
 
 ## Запросы одного пользователя
 
-Обычный MASTER-проход без предпринимательской ветки содержит 11 HTTP-запросов:
+Обычный MASTER-проход без предпринимательской ветки содержит 6 HTTP-запросов:
 
 - reads: 1 × `GET /api/questionnaire`;
-- writes: 1 × start + 8 × answer save + 1 × completion = 10;
+- writes: 1 × start + 3 × batch answer save + 1 × completion = 5;
 - config reads на HTTP-уровне: questionnaire получает pinned config текущей session; result использует тот же `configVersionId` в payload;
-- session operations: 1 × `POST /api/trajectory-sessions`, 8 × `PUT /api/trajectory-sessions/answers`, 1 × `POST /api/trajectory`.
+- session operations: 1 × `POST /api/trajectory-sessions`, 3 × `PUT /api/trajectory-sessions/answers`, 1 × `POST /api/trajectory`.
 
-Если выбран `entrepreneurSignal`, добавляются Q9/Q10 и два `PUT`: всего 13 HTTP-запросов. Самый частый endpoint — `PUT /api/trajectory-sessions/answers` (8 или 10 обращений на проход).
+Если выбран `entrepreneurSignal`, добавляются Q9/Q10 и ещё один batch `PUT`: всего 7 HTTP-запросов. `PUT /api/trajectory-sessions/answers` вызывается 3 или 4 раза на проход.
 
-По текущему server-side коду обычные 11 HTTP-запросов вызывают 15 Data API/RPC операций:
+При прогретом immutable config cache обычный проход вызывает 8 Data API/RPC операций:
 
-- reads: 5 — latest PUBLISHED summary, два чтения session context, pinned questionnaire и pinned engine config;
-- writes: 10 — start session, 8 замен ответов и completion;
-- config reads: 3 из этих reads;
-- session operations: 12 — start, два context read, 8 answer writes и completion.
+- reads: 3 — latest PUBLISHED summary и два чтения session context;
+- writes: 5 — start session, 3 full-set answer writes и completion;
+- pinned questionnaire/engine config добавляют по одному read только при cache miss;
+- session operations: 7 — start, два context read, 3 answer writes и completion.
 
-Для предпринимательской ветки добавляются ещё две answer-write RPC: всего 17 Data API/RPC операций.
+Для предпринимательской ветки добавляется один full-set answer-write RPC: всего 9 Data API/RPC операций при cache HIT.

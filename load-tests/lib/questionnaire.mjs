@@ -74,3 +74,28 @@ export function buildValidAnswerPlan(questionnaire, seed = 0) {
     )
     .map((question) => byQuestionId.get(question.id));
 }
+
+export function buildProgressiveAnswerBatches(answerPlan, batchSize = 3) {
+  if (!Number.isInteger(batchSize) || batchSize < 1) throw new Error("INVALID_BATCH_SIZE");
+  const batches = [];
+  const completed = [];
+  for (const answer of answerPlan) {
+    completed.push({
+      questionId: answer.questionId,
+      answerOptionIds: [...answer.answerOptionIds],
+    });
+    if (completed.length % batchSize === 0) {
+      batches.push(completed.map((item) => ({
+        questionId: item.questionId,
+        answerOptionIds: [...item.answerOptionIds],
+      })));
+    }
+  }
+  if (completed.length % batchSize !== 0) {
+    batches.push(completed.map((item) => ({
+      questionId: item.questionId,
+      answerOptionIds: [...item.answerOptionIds],
+    })));
+  }
+  return batches;
+}

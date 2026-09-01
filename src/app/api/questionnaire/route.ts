@@ -2,7 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 
 import { readPinnedPublicQuestionnaire } from "@/lib/public-config/questionnaire-read";
-import { AdminDataApiError } from "@/lib/supabase/admin-rpc";
+import {
+  immutableCacheFailureStatus,
+  unwrapImmutableCacheError,
+} from "@/lib/public-config/immutable-version-cache";
+import {
+  AdminDataApiError,
+  recordDataApiFailureMetric,
+} from "@/lib/supabase/admin-rpc";
 import { trajectoryDataApi } from "@/lib/trajectory/data-api";
 import {
   measureServerTiming,
@@ -64,10 +71,14 @@ export async function GET(request: NextRequest) {
       session?.educationLevel ?? "MASTER",
     ).catch((error) => {
       const duration = Date.now() - configReadStartedAt;
+      const cacheStatus = immutableCacheFailureStatus(error) ?? "MISS";
       timings.config_read = duration;
-      timings.data_api = (timings.data_api ?? 0) + duration;
-      timings.config_cache_miss = 0;
-      throw error;
+      if (cacheStatus === "MISS") {
+        timings.data_api = (timings.data_api ?? 0) + duration;
+        timings.config_cache_load_failure = 0;
+      }
+      timings[`config_cache_${cacheStatus.toLowerCase()}`] = 0;
+      throw unwrapImmutableCacheError(error);
     });
     const questionnaire = readResult.questionnaire;
     publishedConfigAndDtoReadMs = readResult.timing.dataApiReadMs;
@@ -76,6 +87,7 @@ export async function GET(request: NextRequest) {
     timings.data_api = (timings.data_api ?? 0) + publishedConfigAndDtoReadMs;
     timings.transform = validationTransformMs;
     timings[`config_cache_${readResult.timing.cacheStatus.toLowerCase()}`] = 0;
+    if (readResult.timing.cacheStatus === "MISS") timings.config_cache_load_success = 0;
     if (!questionnaire) {
       return respond({ error: "PUBLISHED_CONFIG_UNAVAILABLE" }, 503);
     }
@@ -92,6 +104,7 @@ export async function GET(request: NextRequest) {
     }
     return respond(questionnaire);
   } catch (error) {
+    recordDataApiFailureMetric(timings, error);
     console.error("[QUESTIONNAIRE_READ_FAILED]", {
       stage,
       errorName: error instanceof Error ? error.name : "UnknownError",
